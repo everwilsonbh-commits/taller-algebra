@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Aula Beca 18 · Sesión 1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800&family=Nunito+Sans:wght@400;600;700&display=swap">
+<style>
+/* Una sola vista clara pensada para proyector: banda superior azul noche, panel de trabajo grande, acento naranja Beca. */
+:root{
+  --noche:#0E1A33; --noche-2:#3A4E78; --papel:#FFFFFF; --blanco:#FFFFFF;
+  --tinta:#05080F; --suave:#1B2540; --linea:#4A4438;
+  --naranja:#E07A1F; --naranja-txt:#8A2E06; --ok:#0B6B3A; --ok-bg:#0B6B3A; --mal:#A3150B; --mal-bg:#A3150B;
+  --display:'Rubik', 'Trebuchet MS', Arial, sans-serif;
+  --texto:'Nunito Sans', 'Segoe UI', Arial, sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--papel);color:var(--tinta);font-family:var(--texto);font-size:20px;font-weight:600;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--noche);z-index:10}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{background:var(--noche);color:var(--papel);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.barra{max-width:1200px;margin:0 auto;padding-block:14px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px}
+.marca{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.02em;white-space:nowrap}
+.marca span{color:#F2B880}
+nav{display:flex;flex-wrap:wrap;gap:8px}
+nav button{font:700 18px var(--texto);color:var(--papel);background:transparent;border:3px solid var(--noche-2);border-radius:999px;padding:8px 18px;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--naranja);border-color:var(--naranja);color:var(--noche)}
+nav button:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #F2B880;outline-offset:2px}
+main{max-width:1200px;margin:0 auto;padding-block:28px 48px}
+.eyebrow{font-weight:700;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--naranja-txt);margin:0 0 6px}
+h1{font-family:var(--display);font-size:clamp(28px,4vw,44px);line-height:1.1;margin:0 0 20px;text-wrap:balance;color:var(--noche)}
+.panel{background:var(--blanco);border:3px solid var(--linea);border-radius:20px;padding:clamp(18px,3vw,36px)}
+.btn{font:700 18px var(--texto);border-radius:12px;padding:12px 22px;cursor:pointer;border:2px solid var(--noche);background:var(--blanco);color:var(--noche)}
+.btn.primario{background:var(--noche);color:var(--papel)}
+.btn.naranja{background:var(--naranja);border-color:var(--naranja);color:var(--noche)}
+.btn:disabled{opacity:.4;cursor:default}
+.fila{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+
+/* Cronómetro */
+.reloj{font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;font-size:clamp(96px,22vw,260px);line-height:1;text-align:center;color:var(--noche);padding-block:12px 24px}
+.reloj.alerta{color:var(--naranja-txt)}
+.reloj.fin{color:var(--mal)}
+.estado{text-align:center;font-size:22px;color:var(--suave);min-height:1.5em;margin-bottom:20px}
+.centrado{justify-content:center}
+
+/* Diagnóstico */
+.progreso{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.progreso button{width:44px;height:44px;border-radius:50%;border:3px solid var(--linea);background:var(--papel);font:700 16px var(--texto);color:var(--suave);cursor:pointer}
+.progreso button.actual{border-color:var(--noche);background:var(--noche);color:var(--papel)}
+.enunciado{font-size:clamp(22px,2.6vw,32px);line-height:1.35;margin:0 0 24px;max-width:46ch}
+.alternativas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:24px}
+.alt{display:flex;gap:14px;align-items:center;text-align:left;font:700 clamp(22px,2.4vw,30px) var(--texto);color:var(--tinta);background:var(--papel);border:4px solid var(--linea);border-radius:14px;padding:16px 20px;cursor:pointer;min-width:0}
+.alt b{font-family:var(--display);color:var(--naranja-txt)}
+.alt.correcta{background:var(--ok);border-color:var(--ok);color:#FFFFFF}
+.alt.correcta b{color:#FFFFFF}
+.alt.elegida-mal{background:var(--mal);border-color:var(--mal);color:#FFFFFF}
+.alt.elegida-mal b{color:#FFFFFF}
+.solucion{font-size:clamp(20px,2.2vw,28px);font-weight:700;color:#FFFFFF;background:var(--ok);border-left:6px solid var(--ok);border-radius:10px;padding:14px 18px;margin-bottom:20px}
+
+/* MCM o MCD */
+.marcador{font-family:var(--display);font-weight:700;font-size:20px;color:var(--suave);margin-bottom:12px;font-variant-numeric:tabular-nums}
+.situacion{font-size:clamp(24px,3vw,38px);line-height:1.3;margin:0 0 28px;max-width:40ch;min-height:3.9em}
+.duelo{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.duelo button{font:800 clamp(40px,7vw,80px) var(--display);border-radius:18px;padding:18px;cursor:pointer;border:3px solid var(--noche)}
+.duelo .mcm{background:var(--noche);color:#F2B880}
+.duelo .mcd{background:var(--blanco);color:var(--naranja-txt)}
+.duelo button small{display:block;font:600 16px var(--texto);margin-top:4px}
+.duelo .mcm small{color:#C9D3E6}.duelo .mcd small{color:var(--suave)}
+.retro{font-size:clamp(20px,2.2vw,28px);font-weight:700;color:#FFFFFF;border-radius:10px;padding:14px 18px;margin-bottom:16px}
+.retro.bien{background:var(--ok)}
+.retro.mal{background:var(--mal)}
+
+/* Descuentos */
+.lab{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:24px}
+.campo{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.campo label{font-weight:700;font-size:16px;color:var(--suave)}
+.campo input,.campo select{font:700 26px var(--texto);color:var(--tinta);padding:10px 12px;border:3px solid var(--linea);border-radius:10px;background:var(--papel);width:100%}
+.cambio{display:grid;grid-template-columns:1.2fr 1fr;gap:10px}
+.cadena{font-family:var(--display);font-weight:700;font-size:clamp(24px,3vw,40px);line-height:1.3;color:var(--noche);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cadena .paga{color:var(--naranja-txt)}
+.tarjetas{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+.tarjeta{border-radius:14px;padding:16px 18px}
+.tarjeta.bien{background:var(--noche);color:var(--papel)}
+.tarjeta.bien strong{color:#F2B880}
+.tarjeta.trampa{background:var(--papel);border:4px dashed var(--linea);color:var(--suave)}
+.tarjeta.trampa strong{text-decoration:line-through}
+.tarjeta p{margin:0 0 4px;font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.tarjeta strong{font-family:var(--display);font-size:clamp(26px,3vw,38px);display:block;font-variant-numeric:tabular-nums}
+.nota{font-size:15px;color:var(--suave);margin-top:14px}
+
+@media (max-width:720px){
+  .alternativas,.lab,.tarjetas{grid-template-columns:1fr}
+  .duelo{grid-template-columns:1fr 1fr}
+}
+@media (prefers-reduced-motion:no-preference){
+  .alt,.duelo button,nav button{transition:background-color .15s,border-color .15s}
+}
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="barra">
+      <div class="marca">Beca 18 <span>· Sesión 1</span></div>
+      <nav role="tablist" aria-label="Herramientas de la clase">
+        <button role="tab" id="t-reloj" data-v="reloj" aria-selected="true">Cronómetro</button>
+        <button role="tab" id="t-diagnostico" data-v="diagnostico" aria-selected="false">Diagnóstico</button>
+        <button role="tab" id="t-mcm" data-v="mcm" aria-selected="false">¿MCM o MCD?</button>
+        <button role="tab" id="t-descuentos" data-v="descuentos" aria-selected="false">Descuentos</button>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<main>
+
+  <!-- CRONÓMETRO -->
+  <section id="v-reloj" role="tabpanel" aria-labelledby="t-reloj">
+    <p class="eyebrow">Ritmo ENP: 2 minutos por pregunta</p>
+    <h1>Cronómetro de la clase</h1>
+    <div class="panel">
+      <div class="fila centrado" style="margin-bottom:8px">
+        <button class="btn" data-min="2">2 min · 1 pregunta</button>
+        <button class="btn" data-min="12">12 min · parejas</button>
+        <button class="btn" data-min="15">15 min · diagnóstico</button>
+        <button class="btn" data-min="24">24 min · ficha</button>
+      </div>
+      <div class="reloj" id="reloj" aria-live="off">15:00</div>
+      <div class="estado" id="estado">Listo para el diagnóstico</div>
+      <div class="fila centrado">
+        <button class="btn primario" id="iniciar">Iniciar</button>
+        <button class="btn" id="reiniciar">Reiniciar</button>
+        <button class="btn" id="pantalla">Pantalla completa</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DIAGNÓSTICO -->
+  <section id="v-diagnostico" role="tabpanel" aria-labelledby="t-diagnostico" hidden>
+    <p class="eyebrow">8 preguntas · corrección en voz alta</p>
+    <h1>Diagnóstico</h1>
+    <div class="panel">
+      <div class="progreso" id="progreso"></div>
+      <p class="enunciado" id="enunciado"></p>
+      <div class="alternativas" id="alternativas"></div>
+      <div class="solucion" id="solucion" hidden></div>
+      <div class="fila">
+        <button class="btn" id="anterior">Anterior</button>
+        <button class="btn naranja" id="revelar">Mostrar respuesta</button>
+        <button class="btn primario" id="siguiente">Siguiente</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MCM O MCD -->
+  <section id="v-mcm" role="tabpanel" aria-labelledby="t-mcm" hidden>
+    <p class="eyebrow">¿Se repite o se reparte?</p>
+    <h1>¿MCM o MCD?</h1>
+    <div class="panel">
+      <div class="marcador" id="marcador"></div>
+      <p class="situacion" id="situacion"></p>
+      <div class="duelo">
+        <button class="mcm" id="elige-mcm">MCM<small>se repite, vuelve a coincidir</small></button>
+        <button class="mcd" id="elige-mcd">MCD<small>se parte en partes iguales</small></button>
+      </div>
+      <div class="retro" id="retro" hidden></div>
+      <div class="fila">
+        <button class="btn primario" id="otra" hidden>Siguiente situación</button>
+        <button class="btn" id="reiniciar-juego">Empezar de nuevo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DESCUENTOS -->
+  <section id="v-descuentos" role="tabpanel" aria-labelledby="t-descuentos" hidden>
+    <p class="eyebrow">Porcentajes sucesivos</p>
+    <h1>Simulador de aumentos y descuentos</h1>
+    <div class="panel lab">
+      <div>
+        <div class="campo">
+          <label for="precio">Precio inicial (S/)</label>
+          <input id="precio" type="number" min="1" step="1" value="250">
+        </div>
+        <div class="campo">
+          <label for="tipo1">Primer cambio</label>
+          <div class="cambio">
+            <select id="tipo1"><option value="-1" selected>Descuento</option><option value="1">Aumento</option></select>
+            <input id="pct1" type="number" min="0" max="100" step="1" value="20" aria-label="Porcentaje del primer cambio">
+          </div>
+        </div>
+        <div class="campo">
+          <label for="tipo2">Segundo cambio</label>
+          <div class="cambio">
+            <select id="tipo2"><option value="-1" selected>Descuento</option><option value="1">Aumento</option></select>
+            <input id="pct2" type="number" min="0" max="100" step="1" value="30" aria-label="Porcentaje del segundo cambio">
+          </div>
+        </div>
+        <div class="fila">
+          <button class="btn" data-caso="250,-1,20,-1,30">250 · −20 % · −30 %</button>
+          <button class="btn" data-caso="100,1,25,-1,20">100 · +25 % · −20 %</button>
+          <button class="btn" data-caso="800,1,10,-1,10">800 · +10 % · −10 %</button>
+        </div>
+      </div>
+      <div>
+        <p class="eyebrow">Se multiplica por los factores</p>
+        <div class="cadena" id="cadena"></div>
+        <div class="tarjetas">
+          <div class="tarjeta bien"><p>Cambio único real</p><strong id="unico"></strong></div>
+          <div class="tarjeta trampa"><p>Si sumas los %</p><strong id="trampa"></strong></div>
+        </div>
+        <p class="nota" id="nota"></p>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+(function(){
+  // ---------- pestañas ----------
+  const vistas = ["reloj","diagnostico","mcm","descuentos"];
+  const tabs = document.querySelectorAll('nav button');
+  function mostrar(v){
+    if(!vistas.includes(v)) v = "reloj";
+    vistas.forEach(x => document.getElementById('v-'+x).hidden = (x!==v));
+    tabs.forEach(t => t.setAttribute('aria-selected', t.dataset.v===v ? 'true':'false'));
+    try{ localStorage.setItem('aula-vista', v); }catch(e){}
+  }
+  tabs.forEach(t => t.addEventListener('click', () => mostrar(t.dataset.v)));
+  let inicial = (location.hash||'').slice(1);
+  if(!vistas.includes(inicial)){ try{ inicial = localStorage.getItem('aula-vista') || 'reloj'; }catch(e){ inicial='reloj'; } }
+  mostrar(inicial);
+
+  const num = (x, d=2) => Number(x).toLocaleString('es-PE',{minimumFractionDigits:0,maximumFractionDigits:d});
+
+  // ---------- cronómetro ----------
+  const relojEl = document.getElementById('reloj'), estadoEl = document.getElementById('estado');
+  const btnIni = document.getElementById('iniciar');
+  let total = 15*60*1000, restante = total, fin = null, tic = null, audio = null;
+  const etiquetas = {2:"Una pregunta: 2 minutos",12:"Práctica en parejas",15:"Listo para el diagnóstico",24:"Ficha completa a ritmo de examen"};
+  function pintar(){
+    const s = Math.max(0, Math.ceil(restante/1000));
+    relojEl.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+    relojEl.classList.toggle('alerta', s>0 && s<=30);
+    relojEl.classList.toggle('fin', s===0);
+  }
+  function pitar(){
+    try{
+      if(!audio) return;
+      [0,0.35,0.7].forEach(t=>{
+        const o = audio.createOscillator(), g = audio.createGain();
+        o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
+        g.gain.setValueAtTime(0.25, audio.currentTime+t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime+t+0.3);
+        o.start(audio.currentTime+t); o.stop(audio.currentTime+t+0.3);
+      });
+    }catch(e){}
+  }
+  function parar(){ clearInterval(tic); tic=null; fin=null; btnIni.textContent = 'Iniciar'; }
+  function correr(){
+    restante = fin - Date.now();
+    if(restante<=0){ restante=0; pintar(); parar(); estadoEl.textContent='¡Tiempo! Lápices abajo.'; pitar(); return; }
+    pintar();
+  }
+  btnIni.addEventListener('click', () => {
+    try{ if(!audio){ const C = window.AudioContext||window.webkitAudioContext; if(C) audio = new C(); } }catch(e){}
+    if(tic){ restante = fin - Date.now(); parar(); estadoEl.textContent='En pausa'; return; }
+    if(restante<=0) restante = total;
+    fin = Date.now() + restante; tic = setInterval(correr, 200);
+    btnIni.textContent = 'Pausar'; estadoEl.textContent = 'Corriendo…';
+  });
+  document.getElementById('reiniciar').addEventListener('click', () => { parar(); restante = total; pintar(); estadoEl.textContent='Listo'; });
+  document.querySelectorAll('[data-min]').forEach(b => b.addEventListener('click', () => {
+    parar(); total = Number(b.dataset.min)*60*1000; restante = total; pintar();
+    estadoEl.textContent = etiquetas[b.dataset.min] || 'Listo';
+  }));
+  document.getElementById('pantalla').addEventListener('click', () => {
+    const el = document.getElementById('v-reloj');
+    try{
+      if(document.fullscreenElement) document.exitFullscreen();
+      else if(el.requestFullscreen) el.requestFullscreen().catch(()=>{ estadoEl.textContent='La pantalla completa no está disponible aquí'; });
+    }catch(e){}
+  });
+  pintar();
+
+  // ---------- diagnóstico ----------
+  const D = [
+    {q:"Un polo cuesta S/ 200. Primero sube 20 % y luego baja 20 %. ¿Cuál es su precio final?", o:["S/ 200","S/ 192","S/ 196","S/ 180"], c:1, s:"200 × 1,2 × 0,8 = 192. Los porcentajes no se cancelan."},
+    {q:"Tres buses salen juntos a las 6:00 a. m. Uno sale cada 12 min, otro cada 18 min y otro cada 30 min. ¿A qué hora vuelven a salir juntos?", o:["7:30 a. m.","8:00 a. m.","9:00 a. m.","9:30 a. m."], c:2, s:"MCM(12; 18; 30) = 180 min = 3 h → 9:00 a. m."},
+    {q:"Si 3x − 7 = 2(x + 4), ¿cuál es el valor de x?", o:["1","11","15","−1"], c:2, s:"3x − 7 = 2x + 8 → x = 15"},
+    {q:"Las notas de Luis en seis prácticas fueron 4, 9, 7, 3, 9 y 6. ¿Cuál es la mediana?", o:["6","6,5","7","9"], c:1, s:"Ordenadas: 3, 4, 6, 7, 9, 9 → (6 + 7) ÷ 2 = 6,5"},
+    {q:"En una bolsa hay 5 bolas rojas, 3 azules y 2 verdes. Se saca una al azar. ¿Cuál es la probabilidad de que no sea roja?", o:["1/2","3/10","1/5","2/5"], c:0, s:"No rojas: 3 + 2 = 5 de 10 → 1/2"},
+    {q:"Los catetos de un triángulo rectángulo miden 9 cm y 12 cm. ¿Cuánto mide la hipotenusa?", o:["21 cm","15 cm","13 cm","16 cm"], c:1, s:"√(81 + 144) = √225 = 15 (terna 3-4-5 × 3)"},
+    {q:"Un rectángulo tiene 34 m de perímetro y su largo excede a su ancho en 5 m. ¿Cuál es su área?", o:["60 m²","66 m²","72 m²","84 m²"], c:1, s:"2(a + a + 5) = 34 → a = 6, largo = 11 → 6 × 11 = 66"},
+    {q:"Seis obreros hacen una obra en 10 días. ¿En cuántos días la harían 4 obreros al mismo ritmo?", o:["6","12","15","20"], c:2, s:"Proporcionalidad inversa: 6 × 10 = 4 × d → d = 15"}
+  ];
+  let iD = 0, revelado = false, elegida = null;
+  const progEl = document.getElementById('progreso');
+  D.forEach((_,k)=>{ const b=document.createElement('button'); b.textContent=k+1; b.setAttribute('aria-label','Pregunta '+(k+1)); b.addEventListener('click',()=>{iD=k;nuevaD();}); progEl.appendChild(b); });
+  function nuevaD(){ revelado=false; elegida=null; pintarD(); }
+  function pintarD(){
+    const p = D[iD];
+    [...progEl.children].forEach((b,k)=>b.classList.toggle('actual',k===iD));
+    document.getElementById('enunciado').textContent = (iD+1)+'. '+p.q;
+    const cont = document.getElementById('alternativas'); cont.innerHTML='';
+    p.o.forEach((t,k)=>{
+      const b = document.createElement('button'); b.className='alt';
+      b.innerHTML = '<b>'+'ABCD'[k]+')</b><span></span>'; b.querySelector('span').textContent=t;
+      if(revelado && k===p.c) b.classList.add('correcta');
+      if(revelado && elegida===k && k!==p.c) b.classList.add('elegida-mal');
+      b.addEventListener('click',()=>{ elegida=k; revelado=true; pintarD(); });
+      cont.appendChild(b);
+    });
+    const sol = document.getElementById('solucion');
+    sol.hidden = !revelado; sol.textContent = 'Respuesta '+'ABCD'[p.c]+') '+p.o[p.c]+' — '+p.s;
+    document.getElementById('anterior').disabled = iD===0;
+    document.getElementById('siguiente').disabled = iD===D.length-1;
+    document.getElementById('revelar').textContent = revelado ? 'Ocultar respuesta' : 'Mostrar respuesta';
+  }
+  document.getElementById('revelar').addEventListener('click',()=>{ revelado=!revelado; if(!revelado) elegida=null; pintarD(); });
+  document.getElementById('anterior').addEventListener('click',()=>{ if(iD>0){iD--; nuevaD();} });
+  document.getElementById('siguiente').addEventListener('click',()=>{ if(iD<D.length-1){iD++; nuevaD();} });
+  pintarD();
+
+  // ---------- MCM o MCD ----------
+  const S = [
+    {t:"Tres buses salen cada 12, 18 y 30 minutos. ¿Cuándo vuelven a salir juntos?", r:"MCM", e:"Se repite y vuelve a coincidir: MCM(12; 18; 30) = 180 min."},
+    {t:"Dos cintas de 60 cm y 84 cm se cortan en trozos iguales, lo más largos posible.", r:"MCD", e:"Se parte en trozos iguales: MCD(60; 84) = 12 cm."},
+    {t:"Dos faros se encienden cada 8 y 12 segundos. ¿Cada cuánto se encienden a la vez?", r:"MCM", e:"Vuelven a coincidir: MCM(8; 12) = 24 s."},
+    {t:"Se reparten 24 lápices y 36 borradores en el mayor número de bolsas iguales, sin que sobre nada.", r:"MCD", e:"Se reparte sin sobrar: MCD(24; 36) = 12 bolsas."},
+    {t:"¿Cuál es la menor cantidad de caramelos que se puede repartir exactamente entre 4, 6 o 9 niños?", r:"MCM", e:"La menor cantidad que contiene a todos: MCM(4; 6; 9) = 36."},
+    {t:"Un piso de 240 cm × 180 cm se cubre con losetas cuadradas iguales, lo más grandes posible.", r:"MCD", e:"Se divide el piso: MCD(240; 180) = 60 cm de lado."},
+    {t:"Ana visita a su abuela cada 6 días y Luis cada 10. Hoy coincidieron. ¿Cuándo vuelven a coincidir?", r:"MCM", e:"Vuelven a coincidir: MCM(6; 10) = 30 días."},
+    {t:"¿Cuál es la mayor longitud de una regla con la que se miden exactamente 45 m y 75 m?", r:"MCD", e:"La mayor medida que divide a ambas: MCD(45; 75) = 15 m."},
+    {t:"¿Cuál es el cubo más pequeño que se puede armar con ladrillos de 6 cm × 4 cm × 3 cm?", r:"MCM", e:"El lado debe contener a 6, 4 y 3: MCM = 12 cm."},
+    {t:"Se plantan árboles igualmente espaciados, a la mayor distancia posible, en un terreno de 90 m por 120 m.", r:"MCD", e:"Se divide el lado en partes iguales: MCD(90; 120) = 30 m."}
+  ];
+  let iS = 0, aciertos = 0, respondida = false;
+  const retro = document.getElementById('retro'), otra = document.getElementById('otra');
+  function pintarS(){
+    const fin = iS>=S.length;
+    document.getElementById('marcador').textContent = fin ? ('Resultado final: '+aciertos+' de '+S.length) : ('Situación '+(iS+1)+' de '+S.length+' · Aciertos: '+aciertos);
+    document.getElementById('situacion').textContent = fin ? (aciertos>=8 ? 'Excelente: ya distinguen cuándo se repite y cuándo se reparte.' : 'Repasen las pistas: “vuelven a coincidir” es MCM; “lo más grande posible, en partes iguales” es MCD.') : S[iS].t;
+    document.getElementById('elige-mcm').disabled = fin || respondida;
+    document.getElementById('elige-mcd').disabled = fin || respondida;
+    otra.hidden = fin || !respondida;
+    if(!respondida) retro.hidden = true;
+  }
+  function responder(r){
+    if(respondida || iS>=S.length) return;
+    respondida = true; const s = S[iS], bien = r===s.r; if(bien) aciertos++;
+    retro.hidden = false; retro.className = 'retro ' + (bien?'bien':'mal');
+    retro.textContent = (bien ? '¡Correcto! ' : 'Era '+s.r+'. ') + s.e;
+    pintarS();
+  }
+  document.getElementById('elige-mcm').addEventListener('click',()=>responder('MCM'));
+  document.getElementById('elige-mcd').addEventListener('click',()=>responder('MCD'));
+  otra.addEventListener('click',()=>{ iS++; respondida=false; pintarS(); });
+  document.getElementById('reiniciar-juego').addEventListener('click',()=>{ iS=0; aciertos=0; respondida=false; pintarS(); });
+  pintarS();
+
+  // ---------- descuentos ----------
+  const $ = id => document.getElementById(id);
+  function factorTxt(f){ return num(f,4); }
+  function calc(){
+    const P = Math.max(0, Number($('precio').value)||0);
+    const s1 = Number($('tipo1').value), s2 = Number($('tipo2').value);
+    const p1 = Math.min(100, Math.max(0, Number($('pct1').value)||0)), p2 = Math.min(100, Math.max(0, Number($('pct2').value)||0));
+    const f1 = 1 + s1*p1/100, f2 = 1 + s2*p2/100, F = f1*f2, final = P*F;
+    $('cadena').innerHTML = '';
+    const linea1 = document.createElement('div'); linea1.textContent = num(P)+' × '+factorTxt(f1)+' × '+factorTxt(f2);
+    const linea2 = document.createElement('div'); linea2.className='paga'; linea2.textContent = '= S/ '+num(final);
+    $('cadena').append(linea1, linea2);
+    const cambio = (F-1)*100;
+    $('unico').textContent = Math.abs(cambio)<1e-9 ? 'Sin cambio (0 %)' : (cambio<0 ? 'Descuento de '+num(-cambio)+' %' : 'Aumento de '+num(cambio)+' %');
+    const suma = s1*p1 + s2*p2;
+    $('trampa').textContent = suma===0 ? '0 %' : (suma<0 ? 'Descuento de '+num(-suma)+' %' : 'Aumento de '+num(suma)+' %');
+    $('nota').textContent = 'Factor total: '+factorTxt(f1)+' × '+factorTxt(f2)+' = '+factorTxt(F)+'. Precio final con la suma (incorrecto): S/ '+num(P*(1+suma/100))+'.';
+  }
+  ['precio','tipo1','tipo2','pct1','pct2'].forEach(id=>$(id).addEventListener('input',calc));
+  document.querySelectorAll('[data-caso]').forEach(b=>b.addEventListener('click',()=>{
+    const [P,s1,p1,s2,p2] = b.dataset.caso.split(',');
+    $('precio').value=P; $('tipo1').value=s1; $('pct1').value=p1; $('tipo2').value=s2; $('pct2').value=p2; calc();
+  }));
+  calc();
+})();
+</script>
+
+</body>
+</html>
