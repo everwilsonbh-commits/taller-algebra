@@ -9,3 +9,4 @@ Sesiones interactivas para 3.º y 4.º de secundaria. Cada pregunta se comprueba
 ## Preparación Beca 18
 
 - Sesión 1 · 24 de octubre · [Porcentajes, interés y MCM/MCD](beca18-sesion1.html)
+- Simulacro · [ENP 2023: razonamiento matemático](beca18-enp2023.html)
