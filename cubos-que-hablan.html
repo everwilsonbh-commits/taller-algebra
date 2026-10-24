@@ -1,0 +1,530 @@
+<title>Carrera de cubos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=STIX+Two+Text:ital,wght@1,500&display=swap">
+<style>
+/* Layout: hoja cuadriculada de cuaderno; una etapa a la vez, con barra de etapas arriba */
+:root{
+  --paper:#f3f6fa; --grid:#dde6f0; --card:#ffffff; --ink:#16223a; --muted:#56647c; --line:#cbd6e4;
+  --accent:#2446c8; --accent-ink:#ffffff; --accent-soft:#e3e9fb;
+  --ta:#3a6ee0; --tb:#f0bf2a; --tab:#2c9f68; --tc:#7f9be8;
+  --ok:#1d8048; --ok-soft:#e1f3e8; --bad:#c2392a; --bad-soft:#fbe6e3;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-math:"STIX Two Text", "Cambria Math", "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f1623; --grid:#19243a; --card:#16202f; --ink:#e7edf6; --muted:#9dabc0; --line:#2b3a52;
+  --accent:#86a2ff; --accent-ink:#0d1526; --accent-soft:#1f2c4d;
+  --ta:#5b8bf2; --tb:#f2c94a; --tab:#3fbc80; --tc:#3f5aa8;
+  --ok:#55c985; --ok-soft:#173326; --bad:#ff8577; --bad-soft:#3a1d1c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f1623; --grid:#19243a; --card:#16202f; --ink:#e7edf6; --muted:#9dabc0; --line:#2b3a52;
+  --accent:#86a2ff; --accent-ink:#0d1526; --accent-soft:#1f2c4d;
+  --ta:#5b8bf2; --tb:#f2c94a; --tab:#3fbc80; --tc:#3f5aa8;
+  --ok:#55c985; --ok-soft:#173326; --bad:#ff8577; --bad-soft:#3a1d1c; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.namefield{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;background:var(--accent-soft)}
+.namefield span{font-weight:700}
+.namefield input{width:min(260px,100%)!important}
+body{background:var(--paper);color:var(--ink);font:17px/1.55 var(--f-body);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--card)}
+.wrap{max-width:900px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(1.9rem,5vw,2.8rem);font-weight:800;letter-spacing:-.01em}
+h2{font-size:clamp(1.4rem,3.6vw,1.9rem);font-weight:800}
+h3{font-size:1.12rem;font-weight:600}
+p{margin:0;max-width:65ch}
+.m{font-family:var(--f-math);font-style:italic;font-weight:500;font-size:1.08em;white-space:nowrap}
+.eyebrow{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.muted{color:var(--muted)}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.top .wrap{padding-block:10px 0;display:flex;flex-direction:column;gap:8px}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand b{font-family:var(--f-display);font-size:1.15rem}
+.score{display:flex;align-items:center;gap:8px;font-weight:700;font-variant-numeric:tabular-nums;background:var(--accent-soft);color:var(--ink);padding:6px 12px;border-radius:999px}
+.score span{font-family:var(--f-display);font-size:1.3rem;color:var(--accent)}
+.score.bump{animation:bump .5s}
+@keyframes bump{40%{transform:scale(1.15)}}
+nav.stages{overflow-x:auto;scrollbar-width:thin}
+nav.stages ol{list-style:none;margin:0;padding:0 0 8px;display:flex;gap:6px;width:max-content}
+nav.stages button{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer;display:flex;gap:6px;align-items:center;white-space:nowrap}
+nav.stages button .n{font-weight:700;color:var(--muted)}
+nav.stages button[aria-current="step"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+nav.stages button[aria-current="step"] .n{color:var(--accent-ink)}
+nav.stages button.done::after{content:"✓";color:var(--ok);font-weight:700}
+nav.stages button[aria-current="step"].done::after{color:var(--accent-ink)}
+
+main section{display:flex;flex-direction:column;gap:22px;padding-top:28px}
+.stage-head{display:flex;flex-direction:column;gap:8px}
+.time{display:inline-flex;gap:6px;align-items:center;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.quote{border-left:4px solid var(--bad);background:var(--card);padding:14px 18px;border-radius:4px 12px 12px 4px;font-size:1.1rem}
+.quote .who{font-size:.85rem;color:var(--muted);display:block;margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.grid2>*{min-width:0}
+
+button.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 16px;cursor:pointer;background:var(--accent);color:var(--accent-ink)}
+button.ghost{font:inherit;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer;background:var(--card);color:var(--ink)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+input[type=text],input[type=number]{font:inherit;font-variant-numeric:tabular-nums;width:8.5em;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}
+textarea{font:inherit;width:100%;min-height:84px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);resize:vertical}
+label.lbl{font-weight:700;display:block}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.fb{padding:10px 12px;border-radius:8px;font-size:.96rem}
+.fb.ok{background:var(--ok-soft);color:var(--ok)}
+.fb.bad{background:var(--bad-soft);color:var(--bad)}
+.fb.info{background:var(--accent-soft);color:var(--ink)}
+.mc{display:flex;flex-direction:column;gap:8px}
+.mc button{font:inherit;text-align:left;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:10px;padding:10px 14px;cursor:pointer}
+.mc button.right{border-color:var(--ok);background:var(--ok-soft)}
+.mc button.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.next{display:flex;justify-content:flex-end}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+.figure{width:100%;max-width:340px;margin:0 auto;display:block}
+.figure text{font-family:var(--f-math);font-style:italic;fill:var(--ink)}
+.tray{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:center}
+.piece{border:2px solid transparent;border-radius:6px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;font-family:var(--f-math);font-style:italic;font-weight:500;color:#0d1526}
+.piece[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:3px}
+.piece:disabled{opacity:.18}
+.formula{font-family:var(--f-math);font-style:italic;font-size:clamp(1.3rem,4vw,1.8rem);text-align:center;padding:8px 0}
+.formula .g{color:var(--tab);font-weight:700}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.9rem;color:var(--muted);justify-content:center}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.steps{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.steps button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+table.calc{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+.tablebox{overflow-x:auto}
+table.calc td{padding:10px 8px;border-top:1px solid var(--line);vertical-align:middle}
+table.calc td.q{font-family:var(--f-math);font-style:italic;font-size:1.25rem;white-space:nowrap}
+.timer{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9rem;white-space:nowrap}
+.hint{font-family:var(--f-math);font-style:italic;color:var(--muted)}
+.case-expr{font-family:var(--f-math);font-style:italic;font-size:1.35rem}
+.case-expr s{text-decoration-color:var(--bad)}
+.kpi{display:flex;gap:10px;align-items:baseline}
+.kpi b{font-family:var(--f-display);font-size:2.2rem;color:var(--accent);font-variant-numeric:tabular-nums}
+.self{display:grid;gap:10px}
+.self fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0;min-width:0}
+.self legend{font-weight:700;padding:0 4px}
+.self label{margin-right:14px;white-space:nowrap;display:inline-block}
+.who{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.whobtn{font:inherit;font-weight:700;border:2px dashed var(--accent);background:var(--accent-soft);color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer;font-variant-numeric:tabular-nums}
+.whobtn.on{border-style:solid;background:var(--accent);color:var(--accent-ink)}
+.whobtn.bump{animation:bump .5s}
+@keyframes bump{40%{transform:scale(1.12)}}
+button.small{padding:6px 12px;font-size:.88rem}
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(8,12,22,.6);display:flex;align-items:center;justify-content:center;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet{background:var(--card);color:var(--ink);border-radius:16px;width:100%;max-width:620px;max-height:100%;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.names{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.names button{font:inherit;font-weight:700;font-size:1.05rem;padding:16px 14px;border-radius:12px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center;text-align:left;min-width:0}
+.names button span:first-child{overflow-wrap:anywhere}
+.names button small{font-weight:400;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;background:var(--ink);color:var(--card);padding:12px 18px;border-radius:12px;font-weight:700;width:max-content;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+table.tbl{border-collapse:collapse;width:100%;font-size:.95rem;font-variant-numeric:tabular-nums}
+table.tbl th{text-align:left;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.tbl td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+table.tbl td.num{text-align:right}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.8rem;font-weight:700}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.info{background:var(--accent-soft);color:var(--ink)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+.shelves{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.shelf{border:2px dashed var(--line);border-radius:12px;padding:10px;min-height:96px;display:flex;flex-direction:column;gap:8px;cursor:pointer;background:var(--paper);font:inherit;color:var(--ink);text-align:left}
+.shelf b{font-family:var(--f-display)}
+.shelf .in{display:flex;flex-wrap:wrap;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{font-family:var(--f-math);font-style:italic;font-size:1.15rem;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer}
+.chip[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:2px}
+.chip.placed{cursor:default;background:var(--accent-soft)}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.rule{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--paper);display:flex;flex-direction:column;gap:6px;min-width:0}
+.rule b{font-family:var(--f-display)}
+.pascal{font-variant-numeric:tabular-nums;text-align:center;font-family:var(--f-math);font-size:1.15rem;line-height:1.7}
+.pascal .hl{color:var(--accent);font-weight:700}
+.guide td,.guide th{font-size:.9rem}
+.guide td:first-child{font-weight:700;white-space:nowrap}
+.mono{font-family:var(--f-math);font-style:italic;font-size:2rem;text-align:center}
+.cubebox{display:flex;flex-direction:column;gap:8px;align-items:center}
+.cube3d{width:100%;max-width:380px;aspect-ratio:1;display:block;user-select:none;-webkit-user-select:none;border-radius:12px;background:var(--paper)}
+.cube3d:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.cube3d text{font-family:var(--f-math);font-style:italic}
+.typechips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.tchip{font:inherit;font-family:var(--f-math);font-style:italic;font-size:1.05rem;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer;display:flex;align-items:center;gap:4px}
+.tchip[aria-pressed="false"]{opacity:.4;text-decoration:line-through}
+.sol{background:var(--accent-soft);border-radius:10px;padding:12px 14px;margin-top:4px}
+.sol ol{margin:6px 0 0;padding-left:1.3em;display:flex;flex-direction:column;gap:4px}
+.solwrap{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.cellh{color:transparent;background:var(--accent-soft);border-radius:6px}
+</style>
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <div class="brand"><span class="eyebrow">Taller de álgebra · 4.º de secundaria · 24 de octubre</span><b>Carrera de cubos</b></div>
+      <button class="ghost small" id="teacherBtn">Docente</button>
+    </div>
+    <nav class="stages" aria-label="Etapas de la sesión"><ol id="nav"></ol></nav>
+  </div>
+</header>
+<main class="wrap">
+<section data-stage="0" data-name="¿Quién predijo bien?" hidden>
+  <div class="stage-head"><span class="time">Inicio · 15 min</span><h1>¿Quién predijo bien?</h1><p class="muted">De tarea predijeron cómo se desarrolla (a + b)³. Cada equipo escribe su predicción en la pizarra y apuesta puntos a la que cree correcta. Luego, a probar.</p></div>
+  <div class="panel q-text" data-key="p0" data-sol="Respuesta correcta: (a + b)³ = a³ + 3a²b + 3ab² + b³, con 4 términos.|Viene de las 8 piezas del cubo: 1 a³, 3 a²b, 3 ab² y 1 b³.|Compárala con tu predicción: ¿cuántos términos acertaste?" data-label="Mi predicción de tarea">
+    <h3>Escribe la predicción que hiciste de tarea: ¿cómo se desarrolla (a + b)³ y cuántos términos tiene?</h3>
+    <textarea aria-label="Mi predicción de tarea"></textarea><div class="row"><button class="btn">Enviar respuesta</button></div><div class="fb" hidden></div>
+  </div>
+<div class="quote"><span class="who">Mateo, en la pizarra</span><span class="m">(a + b)³ = a³ + b³</span>, porque «el cubo se reparte».</div>
+  <div class="panel"><h3>El probador de Mateo</h3><p>Elige valores, también negativos, y compara los dos lados.</p>
+    <div class="row"><label><span class="m">a</span> = <input type="number" id="pa" value="2"></label><label><span class="m">b</span> = <input type="number" id="pb" value="1"></label></div>
+    <div class="grid2"><div><span class="eyebrow">Lado izquierdo</span><div class="formula" id="pl"></div></div><div><span class="eyebrow">Lado de Mateo</span><div class="formula" id="pr"></div></div></div>
+    <div class="fb" id="pv"></div></div>
+  <div class="panel"><h3>Mira lo que olvidó Mateo</h3>
+    <p>Este es el cubo de arista a + b. Las piezas de colores son las que Mateo sí escribió (a³ y b³). Las líneas punteadas son las que olvidó. <b>Arrastra el cubo con el dedo para girarlo.</b></p>
+    <div class="cubebox"><svg class="cube3d" id="cubeMateo" tabindex="0" role="img" aria-label="Cubo girable: solo se ven a al cubo y b al cubo; las demás piezas aparecen punteadas"></svg></div>
+    <div class="row" style="justify-content:center"><button class="ghost small" data-reset="cubeMateo">Vista inicial</button><button class="ghost small" data-spin="cubeMateo">Girar solo</button></div>
+  </div>
+<div class="panel q-num" data-key="s1q1" data-sol="(a + b)³ con a = 2 y b = 1: (2 + 1)³ = 3³ = 27.|a³ + b³ = 2³ + 1³ = 8 + 1 = 9.|Diferencia: 27 − 9 = 18.|Esos 18 son 3a²b + 3ab² = 3·4·1 + 3·2·1 = 12 + 6 = 18." data-label="Cuánto le falta a Mateo con a=2, b=1" data-pts="2" data-answer="18" data-ok="(2 + 1)³ = 27 y 2³ + 1³ = 9. Faltan 18." data-bad="Calcula (2 + 1)³ y 2³ + 1³ y réstalos.">
+    <h3>Con <span class="m">a = 2</span> y <span class="m">b = 1</span>, ¿cuánto le falta al lado de Mateo?</h3>
+    <div class="row"><input type="text" inputmode="decimal" aria-label="Respuesta"> <span class="muted"></span><button class="btn">Enviar respuesta</button></div>
+    <div class="fb" hidden></div>
+  </div>
+<div class="panel q-mc" data-key="s1q2" data-sol="(a + b)³ − (a³ + b³) = 3a²b + 3ab² = 3ab(a + b).|Mateo tendría razón solo si 3ab(a + b) = 0.|Eso pasa si a = 0, si b = 0 o si a + b = 0 (es decir, a = −b).|Ejemplo: a = 3, b = −3: (0)³ = 0 y 27 − 27 = 0." data-label="Cuándo Mateo tendría razón" data-pts="3" data-answer="1" data-check="Con a = 3 y b = −3: (3 − 3)³ = 0 y 27 − 27 = 0.">
+    <h3>¿En qué casos Mateo sí tendría razón?</h3>
+    <div class="mc"><button data-why="Es cierto en esos casos, pero hay otros. Prueba a = 3 y b = −3 en el probador.">Solo cuando a o b vale 0</button><button data-why="Correcto, y hay una razón: lo que falta es 3ab(a + b), que vale 0 en esos tres casos.">Cuando a = 0, b = 0 o a = −b</button><button data-why="Prueba con b = 0 en el probador.">Nunca</button></div>
+    <div class="fb" hidden></div>
+  </div>
+
+  <div class="next"><button class="btn" data-go="1">Siguiente: Carrera de cubos →</button></div>
+</section>
+<section data-stage="1" data-name="Carrera de cubos" hidden>
+  <div class="stage-head"><span class="time">Desarrollo · Actividad 1 · 20 min</span><h2>Carrera de cubos</h2><p class="muted">Gana el primer equipo que arma el cubo de 8 piezas de cartulina y escribe cuántas piezas hay de cada tipo. Después verifiquen aquí girando el cubo 3D.</p></div>
+  <div class="panel">
+    <p><b>Arrastra el cubo para girarlo.</b> Toca una pieza para ver qué es y cuántas hay de ese tipo. Con los botones de colores puedes mostrar u ocultar cada tipo.</p>
+    <div class="grid2"><label><span class="lbl">a = <b id="cav">3</b></span><input type="range" id="ca" min="1" max="6" value="3"></label>
+    <label><span class="lbl">b = <b id="cbv">2</b></span><input type="range" id="cb" min="1" max="6" value="2"></label></div>
+    <label><span class="lbl">Separar las piezas</span><input type="range" id="ce" min="0" max="100" value="55"></label>
+    <div class="cubebox"><svg class="cube3d" id="cubeMain" tabindex="0" role="img" aria-label="Cubo de arista a más b despiezado en ocho bloques; se puede girar"></svg></div>
+    <div class="row" style="justify-content:center"><button class="ghost small" data-reset="cubeMain">Vista inicial</button><button class="ghost small" data-spin="cubeMain">Girar solo</button></div>
+    <div class="typechips" id="typechips"></div>
+    <div class="fb info" id="cinfo">Toca una pieza del cubo.</div>
+    <div class="formula" id="cform"></div></div>
+
+<div class="panel q-num" data-key="s2q1" data-sol="Las piezas a²b miden a × a × b.|Hay una en cada dirección del cubo: a lo largo, a lo ancho y a lo alto.|Por eso son 3 piezas y el término es 3a²b." data-label="Cuántas piezas a²b" data-pts="2" data-answer="3" data-ok="Son 3: una en cada dirección (largo, ancho y alto)." data-bad="Mueve el deslizador «Separar» y cuenta las piezas verdes.">
+    <h3>¿Cuántas piezas verdes, de volumen a²b, tiene el cubo?</h3>
+    <div class="row"><input type="text" inputmode="decimal" aria-label="Respuesta"> <span class="muted">piezas</span><button class="btn">Enviar respuesta</button></div>
+    <div class="fb" hidden></div>
+  </div>
+<div class="panel q-num" data-key="s2q1b" data-sol="Cada pieza ab² mide a × b × b = 4 × 1 × 1 = 4.|Hay 3 piezas ab².|Volumen total: 3 × 4 = 12, que es el término 3ab² = 3·4·1² = 12." data-label="Volumen total de piezas ab² con a=4, b=1" data-pts="3" data-answer="12" data-ok="Hay 3 piezas de 4 · 1 · 1 = 4, en total 3 · 4 = 12. Es el término 3ab² = 3 · 4 · 1² = 12." data-bad="Gira el cubo para contar las piezas visibles. Cada una mide a · b · b.">
+    <h3>Gira este cubo (a = 4, b = 1). Solo se muestran las piezas azul claro, de volumen ab². ¿Cuánto suman sus volúmenes?</h3>
+    <div class="row"><input type="text" inputmode="decimal" aria-label="Respuesta"> <span class="muted">unidades³</span><button class="btn">Enviar respuesta</button></div>
+    <div class="fb" hidden></div>
+  </div>
+
+  <div class="next"><button class="btn" data-go="2">Siguiente: Fábrica de fórmulas →</button></div>
+</section>
+<section data-stage="2" data-name="Fábrica de fórmulas" hidden>
+  <div class="stage-head"><span class="time">Desarrollo · Actividad 2 · 20 min (incluye pausa activa de 5 min)</span><h2>Fábrica de fórmulas</h2><p class="muted">Pausa activa (5 min): brazos arriba para +, abajo para −, mientras el docente dicta (a − b)³. Luego, a fabricar fórmulas sin cubo.</p></div>
+  <div class="panel q-mc" data-key="f1" data-sol="a − b es lo mismo que a + (−b).|Reemplaza b por −b en a³ + 3a²b + 3ab² + b³.|a³ + 3a²(−b) + 3a(−b)² + (−b)³.|(−b)² es positivo y (−b)³ es negativo: a³ − 3a²b + 3ab² − b³.|Comprobación con a = 3, b = 1: 27 − 27 + 9 − 1 = 8 = 2³ ✓" data-label="(a−b)³ cambiando b por −b" data-pts="3" data-answer="0" data-check="Con a = 3 y b = 1: 27 − 27 + 9 − 1 = 8 = 2³ ✓">
+    <h3>Ya conocen (a + b)³. Sin armar otro cubo, ¿cómo obtienen (a − b)³?</h3>
+    <div class="mc"><button data-why="Correcto: (−b)² es positivo y (−b)³ es negativo, por eso los signos se alternan.">Cambiando b por −b: <span class="m">a³ − 3a²b + 3ab² − b³</span></button><button data-why="Solo b cambia de signo, no a. Prueba con a = 3 y b = 1: (3 − 1)³ = 8.">Cambiando todos los signos: <span class="m">−a³ − 3a²b − 3ab² − b³</span></button><button data-why="Con a = 3 y b = 1: (3 − 1)³ = 8, pero 27 + 27 + 9 + 1 = 64.">Es igual: <span class="m">a³ + 3a²b + 3ab² + b³</span></button></div>
+    <div class="fb" hidden></div>
+  </div>
+<div class="panel" style="align-items:center"><span class="eyebrow">Lo que descubrimos</span>
+    <div class="formula">(a + b)³ = a³ + 3a²b + 3ab² + b³</div>
+    <div class="formula">(a − b)³ = a³ − 3a²b + 3ab² − b³</div>
+    <p class="muted" style="text-align:center">Forma corta, muy útil en concursos: <span class="m">(a + b)³ = a³ + b³ + 3ab(a + b)</span></p></div>
+<div class="panel q-mc" data-key="s2q2" data-sol="Usa (a + b)³ = a³ + 3a²b + 3ab² + b³ con a = x y b = 2.|x³ + 3·x²·2 + 3·x·2² + 2³.|= x³ + 6x² + 12x + 8.|Comprobación con x = 1: 3³ = 27 y 1 + 6 + 12 + 8 = 27 ✓" data-label="Desarrollo de (x + 2)³" data-pts="2" data-answer="0" data-check="Con x = 1: 3³ = 27 y 1 + 6 + 12 + 8 = 27 ✓">
+    <h3><span class="m">(x + 2)³</span> es igual a…</h3>
+    <div class="mc"><button data-why="Correcto: 3·x²·2 = 6x² y 3·x·2² = 12x."><span class="m">x³ + 6x² + 12x + 8</span></button><button data-why="Ese es el error de Mateo: faltan los términos centrales."><span class="m">x³ + 8</span></button><button data-why="Revisa el tercer término: 3·x·2² = 3·x·4 = 12x."><span class="m">x³ + 6x² + 6x + 8</span></button></div>
+    <div class="fb" hidden></div>
+  </div>
+<div class="panel q-num" data-key="s2q3" data-sol="Usa (a − b)³ = a³ − 3a²b + 3ab² − b³ con a = x y b = 1.|x³ − 3x²·1 + 3x·1² − 1³.|= x³ − 3x² + 3x − 1.|El coeficiente de x es 3 (positivo, porque 1² es positivo)." data-label="Coeficiente de x en (x − 1)³" data-pts="2" data-answer="3" data-ok="(x − 1)³ = x³ − 3x² + 3x − 1. El coeficiente es 3 (positivo, porque (−1)² es positivo)." data-bad="Usa a³ − 3a²b + 3ab² − b³ con a = x y b = 1. Ojo con el signo del tercer término.">
+    <h3>Desarrolla <span class="m">(x − 1)³</span>. ¿Cuál es el coeficiente de <span class="m">x</span>?</h3>
+    <div class="row"><input type="text" inputmode="decimal" aria-label="Respuesta"> <span class="muted"></span><button class="btn">Enviar respuesta</button></div>
+    <div class="fb" hidden></div>
+  </div>
+
+  <div class="next"><button class="btn" data-go="3">Siguiente: Pascal relámpago →</button></div>
+</section>
+<section data-stage="3" data-name="Pascal relámpago" hidden>
+  <div class="stage-head"><span class="time">Desarrollo · Actividad 3 · 20 min</span><h2>Pascal relámpago</h2><p class="muted">Los coeficientes 1, 3, 3, 1 aparecen en el triángulo de Pascal. Úsalos para calcular cubos sin calculadora.</p></div>
+  <div class="panel"><div class="pascal">1<br>1 &nbsp; 1<br>1 &nbsp; 2 &nbsp; 1<br><span class="hl">1 &nbsp; 3 &nbsp; 3 &nbsp; 1</span><br>1 &nbsp; 4 &nbsp; 6 &nbsp; 4 &nbsp; 1</div>
+  <p class="muted" style="text-align:center;margin:0 auto">¿Notas algo en 11² = 121 y 11³ = 1331?</p></div>
+  <div class="panel"><h3>Calcula sin calculadora</h3><p>Escribe el resultado y comprueba. El reloj empieza cuando tocas la casilla.</p>
+    <div class="tablebox"><table class="calc"><tbody id="mago"></tbody></table></div></div>
+<div class="panel q-text" data-key="x_pascal" data-sol="Respuesta modelo: 11 = 10 + 1, así que 11ⁿ usa los números de la fila de Pascal como cifras. En 11³ = 1331 los coeficientes 1, 3, 3, 1 son menores que 10 y caben en una cifra. En 11⁵ aparecen 10 y 10, que no caben en una cifra: se «llevan» a la cifra siguiente, y por eso el resultado es 161 051 y no «15101051»." data-label="11³ vs 11⁵">
+    <h3>11³ = 1331 «copia» la fila 1 3 3 1. Pero 11⁵ = 161 051 no copia la fila 1 5 10 10 5 1. ¿Por qué crees que pasa eso?</h3>
+    <textarea aria-label="11³ vs 11⁵"></textarea><div class="row"><button class="btn">Enviar respuesta</button></div><div class="fb" hidden></div>
+  </div>
+
+  <div class="next"><button class="btn" data-go="4">Siguiente: El examen con errores →</button></div>
+</section>
+<section data-stage="4" data-name="El examen con errores" hidden>
+  <div class="stage-head"><span class="time">Desarrollo · Actividad 4 · 20 min</span><h2>El examen con errores</h2><p class="muted">Cada equipo recibe el examen resuelto de un estudiante ficticio con 4 errores. Gana el primer equipo que los encuentra y los corrige. Al corregirlos van a descubrir la suma y la diferencia de cubos.</p></div>
+  <div class="panel" style="align-items:center">
+    <div class="formula">a³ + b³ = (a + b)(a² − ab + b²)</div><div class="formula">a³ − b³ = (a − b)(a² + ab + b²)</div></div>
+  <div class="panel"><h3>Verificador</h3><p>Cambia los valores. ¿Se cumple siempre?</p>
+    <div class="grid2"><label><span class="lbl">a = <b id="vav">5</b></span><input type="range" id="va" min="-6" max="10" value="5"></label>
+    <label><span class="lbl">b = <b id="vbv">2</b></span><input type="range" id="vb" min="-6" max="10" value="2"></label></div>
+    <div class="formula" id="vs" style="font-size:1.15rem"></div><div class="formula" id="vd" style="font-size:1.15rem"></div></div>
+<div class="panel q-mc" data-key="d1" data-sol="Prueba con a = b = 1: a³ + b³ = 2, pero (1 + 1)³ = 8.|No son iguales: a³ + b³ ≠ (a + b)³.|Lo correcto: (a + b)³ = a³ + b³ + 3ab(a + b)." data-label="Detective: a³ + b³ = (a + b)³" data-pts="2" data-answer="1" data-check="Con a = b = 1: 1 + 1 = 2, pero (1 + 1)³ = 8.">
+    <span class="eyebrow">Detectives del error</span><h3>Caso 1: <span class="m">a³ + b³ = (a + b)³</span></h3>
+    <div class="mc"><button>Es correcto</button><button>Error: (a + b)³ = a³ + b³ + 3ab(a + b)</button><button>Solo falla con números negativos</button></div>
+    <div class="fb" hidden></div>
+  </div>
+<div class="panel q-mc" data-key="d2" data-sol="Prueba con x = 3: x³ − 8 = 27 − 8 = 19.|(x − 2)(x² − 2x + 4) = (1)(9 − 6 + 4) = 7. No coincide.|Con x² + 2x + 4: (1)(9 + 6 + 4) = 19 ✓|Fórmula: a³ − b³ = (a − b)(a² + ab + b²)." data-label="Detective: x³ − 8" data-pts="2" data-answer="1" data-check="Con x = 3: 27 − 8 = 19 y (1)(9 + 6 + 4) = 19 ✓">
+    <span class="eyebrow">Detectives del error</span><h3>Caso 2: <span class="m">x³ − 8 = (x − 2)(x² − 2x + 4)</span></h3>
+    <div class="mc"><button>Es correcto</button><button>El segundo factor debe ser <span class="m">x² + 2x + 4</span></button><button>Debe ser <span class="m">(x − 2)³</span></button></div>
+    <div class="fb" hidden></div>
+  </div>
+<div class="panel q-mc" data-key="d3" data-sol="Prueba con x = 1: x³ + 27 = 28.|(x + 3)(x² − 3x + 9) = 4 · (1 − 3 + 9) = 4 · 7 = 28 ✓|No hay error: a³ + b³ = (a + b)(a² − ab + b²)." data-label="Detective: x³ + 27" data-pts="3" data-answer="2" data-check="Con x = 1: 1 + 27 = 28 y (4)(1 − 3 + 9) = 28 ✓">
+    <span class="eyebrow">Detectives del error</span><h3>Caso 3 (¡cuidado!): <span class="m">x³ + 27 = (x + 3)(x² − 3x + 9)</span></h3>
+    <div class="mc"><button>Error: debe ser (x + 3)(x² + 3x + 9)</button><button>Error: debe ser (x + 3)³</button><button>No hay error</button></div>
+    <div class="fb" hidden></div>
+  </div>
+<div class="panel q-mc" data-key="d4" data-sol="Usa (a − b)³ = a³ − 3a²b + 3ab² − b³ con a = 2x y b = 1.|(2x)³ − 3(2x)²(1) + 3(2x)(1)² − 1³.|= 8x³ − 12x² + 6x − 1.|El error de Diego está en el último término: (−1)³ = −1, no +1." data-label="Detective: (2x − 1)³" data-pts="3" data-answer="1" data-check="Con x = 1: (2 − 1)³ = 1 y 8 − 12 + 6 − 1 = 1 ✓">
+    <span class="eyebrow">Detectives del error</span><h3>Caso 4: <span class="m">(2x − 1)³ = 8x³ − 12x² + 6x + 1</span></h3>
+    <div class="mc"><button>Es correcto</button><button>El último término debe ser <span class="m">−1</span>: (−1)³ = −1</button><button>El primer término debe ser <span class="m">2x³</span></button></div>
+    <div class="fb" hidden></div>
+  </div>
+
+  <div class="next"><button class="btn" data-go="5">Siguiente: Reto con apuestas →</button></div>
+</section>
+<section data-stage="5" data-name="Reto con apuestas" hidden>
+  <div class="stage-head"><span class="time">Reto de concurso · 25 min</span><h2>Reto ONEM con apuestas</h2><p class="muted">Antes de cada reto, el equipo apuesta cuántos puntos arriesga (de 1 a 3): si acierta los gana, si falla los pierde. Cada pista resta medio punto.</p></div>
+  <div class="panel q-num" data-key="r1" data-sol="Forma corta: (a + b)³ = a³ + b³ + 3ab(a + b).|5³ = a³ + b³ + 3·3·5.|125 = a³ + b³ + 45.|a³ + b³ = 125 − 45 = 80." data-label="Reto a³ + b³ con a+b=5, ab=3" data-pts="3" data-answer="80" data-ok="a³ + b³ = (a + b)³ − 3ab(a + b) = 125 − 45 = 80." data-bad="Aún no. Prueba con la pista.">
+    <h3>Si <span class="m">a + b = 5</span> y <span class="m">ab = 3</span>, calcula <span class="m">a³ + b³</span>.</h3>
+    <div class="row"><input type="text" inputmode="decimal" aria-label="Respuesta"> <span class="muted"></span><button class="btn">Enviar respuesta</button><button class="ghost hintbtn">Ver pista</button></div>
+    <p class="hint" hidden>Pista: (a + b)³ = a³ + b³ + 3ab(a + b). Reemplaza lo que conoces.</p><div class="fb" hidden></div>
+  </div>
+<div class="panel q-num" data-key="r2" data-sol="Diferencia de cubos: a³ − b³ = (a − b)(a² + ab + b²), con a = 1001 y b = 999.|a − b = 2.|a² = 1 002 001; ab = 1000² − 1 = 999 999; b² = 998 001.|a² + ab + b² = 3 000 001.|1001³ − 999³ = 2 × 3 000 001 = 6 000 002." data-label="Reto 1001³ − 999³" data-pts="4" data-answer="6000002" data-ok="(1001 − 999)(1001² + 1001·999 + 999²) = 2 · (1 002 001 + 999 999 + 998 001) = 2 · 3 000 001 = 6 000 002." data-bad="Aún no. Usa la diferencia de cubos.">
+    <h3>Calcula <span class="m">1001³ − 999³</span> sin calculadora.</h3>
+    <div class="row"><input type="text" inputmode="decimal" aria-label="Respuesta"> <span class="muted"></span><button class="btn">Enviar respuesta</button><button class="ghost hintbtn">Ver pista</button></div>
+    <p class="hint" hidden>Pista: a³ − b³ = (a − b)(a² + ab + b²) con a = 1001 y b = 999. Y 1001 · 999 = 1000² − 1.</p><div class="fb" hidden></div>
+  </div>
+<div class="panel q-num" data-key="r3" data-sol="(x − 1/x)³ = x³ − 3x + 3/x − 1/x³ = x³ − 1/x³ − 3(x − 1/x).|Reemplaza x − 1/x = 2: 2³ = x³ − 1/x³ − 3·2.|8 = x³ − 1/x³ − 6.|x³ − 1/x³ = 14." data-label="Bonus x³ − 1/x³" data-pts="3" data-answer="14" data-ok="(x − 1/x)³ = x³ − 1/x³ − 3(x − 1/x). Entonces 8 = x³ − 1/x³ − 6, y x³ − 1/x³ = 14." data-bad="Eleva al cubo x − 1/x. Recuerda que x · (1/x) = 1.">
+    <span class="eyebrow">Bonus</span><h3>Bonus: si <span class="m">x − 1/x = 2</span>, calcula <span class="m">x³ − 1/x³</span>.</h3>
+    <div class="row"><input type="text" inputmode="decimal" aria-label="Respuesta"> <span class="muted"></span><button class="btn">Enviar respuesta</button></div>
+    <div class="fb" hidden></div>
+  </div>
+<div class="panel q-text" data-key="x_reto" data-sol="Respuesta modelo: hallar a y b obliga a resolver ecuaciones que pueden dar decimales o raíces. Con la identidad (a + b)³ = a³ + b³ + 3ab(a + b) se usa directamente lo que se conoce (a + b y ab), y el resultado sale en una línea." data-label="Ventaja del camino algebraico">
+    <h3>En el reto 1, ¿por qué conviene no buscar a y b? ¿Qué ventaja tiene usar la identidad?</h3>
+    <textarea aria-label="Ventaja del camino algebraico"></textarea><div class="row"><button class="btn">Enviar respuesta</button></div><div class="fb" hidden></div>
+  </div>
+
+  <div class="next"><button class="btn" data-go="6">Siguiente: Cierre →</button></div>
+</section>
+<section data-stage="6" data-name="Cierre y ticket" hidden>
+  <div class="stage-head"><span class="time">Cierre · 15 min</span><h2>Lo que me llevo</h2><p class="muted">Responde cada pregunta y comprueba. Si te equivocas, revisa la resolución paso a paso.</p></div>
+  <div class="panel q-num" data-key="t1" data-sol="Forma corta: (a + b)³ = a³ + b³ + 3ab(a + b).|4³ = a³ + b³ + 3·1·4.|64 = a³ + b³ + 12.|a³ + b³ = 52." data-label="Ticket a³ + b³ con a+b=4, ab=1" data-pts="2" data-answer="52" data-ok="64 − 3(1)(4) = 64 − 12 = 52." data-bad="Usa a³ + b³ = (a + b)³ − 3ab(a + b).">
+    <span class="eyebrow">Ticket de salida</span><h3>Si <span class="m">a + b = 4</span> y <span class="m">ab = 1</span>, ¿cuánto vale <span class="m">a³ + b³</span>?</h3>
+    <div class="row"><input type="text" inputmode="decimal" aria-label="Respuesta"> <span class="muted"></span><button class="btn">Enviar respuesta</button></div>
+    <div class="fb" hidden></div>
+  </div>
+<div class="panel q-text" data-key="x_r1" data-sol="Respuesta modelo: el cubo de arista a + b tiene 8 piezas: a³, b³, 3 piezas a²b y 3 piezas ab². Mateo solo contó las dos esquinas (a³ y b³) y olvidó las 6 piezas del medio, que suman 3a²b + 3ab²." data-label="Error de Mateo">
+    <h3>Explica a Mateo, con el cubo despiezado, por qué (a + b)³ no es a³ + b³.</h3>
+    <textarea aria-label="Error de Mateo"></textarea><div class="row"><button class="btn">Enviar respuesta</button></div><div class="fb" hidden></div>
+  </div>
+<div class="panel q-text" data-key="x_err" data-sol="Ejemplo de respuesta: «Mi error fue escribir +1 en (2x − 1)³. Lo corregí al recordar que (−1)³ es negativo y lo comprobé con x = 1»." data-label="Mi error favorito">
+    <h3>¿Cuál fue el error que más te enseñó hoy? Explícalo en pocas líneas.</h3>
+    <textarea aria-label="Mi error favorito"></textarea><div class="row"><button class="btn">Enviar respuesta</button></div><div class="fb" hidden></div>
+  </div>
+<div class="panel q-text" data-key="x_r2" data-sol="Respuesta abierta: no hay una única respuesta correcta. Lo importante es que expliques por qué esa representación te ayudó." data-label="Qué me ayudó más">
+    <h3>¿Qué te ayudó más a entender hoy: el cubo, los números o las fórmulas? ¿Por qué?</h3>
+    <textarea aria-label="Qué me ayudó más"></textarea><div class="row"><button class="btn">Enviar respuesta</button></div><div class="fb" hidden></div>
+  </div>
+<div class="panel self" id="self"><h3>Mi autoevaluación</h3>
+<fieldset><legend>Desarrollo el binomio al cubo y lo explico con el cubo despiezado</legend><label><input type="radio" name="c1" value="Lo logré"> Lo logré</label><label><input type="radio" name="c1" value="En proceso"> En proceso</label><label><input type="radio" name="c1" value="Necesito ayuda"> Necesito ayuda</label></fieldset>
+<fieldset><legend>Uso la suma y diferencia de cubos para calcular y simplificar</legend><label><input type="radio" name="c2" value="Lo logré"> Lo logré</label><label><input type="radio" name="c2" value="En proceso"> En proceso</label><label><input type="radio" name="c2" value="Necesito ayuda"> Necesito ayuda</label></fieldset>
+<fieldset><legend>Detecto y corrijo errores al desarrollar cubos</legend><label><input type="radio" name="c3" value="Lo logré"> Lo logré</label><label><input type="radio" name="c3" value="En proceso"> En proceso</label><label><input type="radio" name="c3" value="Necesito ayuda"> Necesito ayuda</label></fieldset>
+<div class="row"><button class="btn" id="selfSave">Ver mi resultado</button></div><div class="fb" id="selfFb" hidden></div></div>
+<p class="muted">Próxima sesión: la casona de sillar. ¿Qué pasa cuando el binomio se vuelve trinomio?</p>
+  
+</section>
+
+<section data-teacher hidden>
+  <div class="stage-head"><span class="time">Solo para el profesor</span><h2>Guía docente</h2><p class="muted">Propósito, criterios, tiempos y preguntas clave de la sesión. Las respuestas de los estudiantes no se registran: cada uno comprueba y ve la resolución en su pantalla.</p></div>
+  <div class="panel guide"><h3>Guía de la sesión</h3>
+<div class="tablebox"><table class="tbl"><tbody><tr><td>Grado</td><td>4.º de secundaria · 24 de octubre · 135 min</td></tr><tr><td>Competencia</td><td>Resuelve problemas de regularidad, equivalencia y cambio</td></tr><tr><td>Propósito</td><td>Descubrir el binomio al cubo con un cubo despiezado y usar la suma y diferencia de cubos para calcular y argumentar</td></tr><tr><td>Criterios</td><td>Desarrolla (a ± b)³ y lo justifica con el modelo de volumen. · Usa identidades de cubos para cálculo mental y problemas. · Detecta y corrige errores con contraejemplos.</td></tr><tr><td>Evidencia</td><td>Registro de respuestas (Excel), explicación del error de Mateo y ticket de salida</td></tr></tbody></table></div>
+<div class="tablebox"><table class="tbl"><thead><tr><th>Etapa</th><th>Min</th><th>Qué hacen</th><th>Pregunta clave del docente</th></tr></thead><tbody><tr><td>1. ¿Quién predijo bien?</td><td class="num">15</td><td>Escriben su predicción de tarea, apuestan por la correcta y la prueban con el probador y el cubo de Mateo.</td><td>¿Un solo contraejemplo basta? ¿Qué pasa con a = 3 y b = −3?</td></tr><tr><td>2. Carrera de cubos</td><td class="num">20</td><td>Carrera para armar el cubo de 8 piezas; cuentan los tipos y verifican girando el cubo 3D.</td><td>¿Por qué hay 3 piezas a²b y no 2?</td></tr><tr><td>3. Fábrica de fórmulas</td><td class="num">20</td><td>Pausa activa (5 min). Obtienen (a − b)³ cambiando b por −b y la forma corta; verifican con números.</td><td>¿Cómo obtienes (a − b)³ sin armar otro cubo?</td></tr><tr><td>4. Pascal relámpago</td><td class="num">20</td><td>Duelo de cálculo mental de cubos.</td><td>¿Por qué 11³ copia la fila de Pascal pero 11⁵ no?</td></tr><tr><td>5. Examen con errores</td><td class="num">20</td><td>Encuentran y corrigen 4 errores; descubren la suma y diferencia de cubos.</td><td>¿Cómo convencerías al autor del examen sin dictarle la fórmula?</td></tr><tr><td>6. Reto con apuestas</td><td class="num">25</td><td>Tres retos tipo ONEM; apuestan de 1 a 3 puntos antes de resolver.</td><td>¿Era necesario hallar a y b?</td></tr><tr><td>7. Cierre</td><td class="num">15</td><td>Ticket, «mi error favorito», autoevaluación y tabla de la Liga.</td><td>¿Qué error te enseñó más hoy?</td></tr></tbody></table></div>
+<p><b>Materiales:</b> cubo de 8 piezas de cartulina en un sobre por equipo (a = 3 cm, b = 2 cm), examen con errores impreso y tarjetas de apuesta (anexo 4 del Word); tableta o laptop con esta página.</p></div>
+
+  <div class="next"><button class="btn" data-go="0">Volver a la sesión</button></div>
+</section>
+</main>
+<div class="toast" id="toast" hidden role="status"></div>
+<script>
+(function(){
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const NS="http://www.w3.org/2000/svg";
+const KEY="taller-4to-cubos";
+let st={stage:0};
+try{const r=localStorage.getItem(KEY);if(r)st=Object.assign(st,JSON.parse(r));}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const fmt=n=>String(n).replace("-","−").replace(/\B(?=(\d{3})+(?!\d))/g," ");
+const num=v=>{const t=String(v).replace(/\s/g,"").replace(",",".").replace("−","-");return t===""?NaN:Number(t)};
+function fb(el,cls,msg){el.hidden=false;el.className="fb "+cls;el.textContent=msg;}
+function svg(tag,a,parent){const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);if(parent)parent.appendChild(e);return e;}
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const shake=q=>{if(reduce)return;q.classList.remove("shake");void q.offsetWidth;q.classList.add("shake");};
+const onShow={};
+/* resolución paso a paso */
+function solBox(q,steps,label){label=label||"Resolución";const wrap=document.createElement("div");wrap.className="solwrap";wrap.hidden=true;
+  const b=document.createElement("button");b.className="ghost small solbtn";b.textContent=label==="Resolución"?"Ver resolución paso a paso":"Ver "+label.toLowerCase();
+  const box=document.createElement("div");box.className="sol";box.hidden=true;
+  box.innerHTML='<span class="eyebrow">'+label+'</span><ol></ol>';const ol=box.querySelector("ol");
+  steps.forEach(s=>{const li=document.createElement("li");li.textContent=s;ol.appendChild(li);});
+  b.onclick=()=>{box.hidden=!box.hidden;b.textContent=box.hidden?(label==="Resolución"?"Ver resolución paso a paso":"Ver "+label.toLowerCase()):"Ocultar";};
+  wrap.append(b,box);q.appendChild(wrap);return wrap;}
+const stepsOf=(q,fallback)=>{const s=q.dataset.sol;return s?s.split("|").map(x=>x.trim()).filter(Boolean):[fallback];};
+/* etapas */
+const sections=$$("main section[data-name]"),teacher=$("main section[data-teacher]"),nav=$("#nav");
+sections.forEach((s,i)=>{const li=document.createElement("li"),b=document.createElement("button");
+  b.innerHTML=`<span class="n">${i+1}</span>${s.dataset.name}`;b.onclick=()=>show(i);li.appendChild(b);nav.appendChild(li);});
+function show(i){teacher.hidden=true;sections.forEach((s,j)=>s.hidden=j!==i);$$("#nav button").forEach((b,j)=>b.setAttribute("aria-current",j===i?"step":"false"));
+  st.stage=i;save();window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});$$("#nav button")[i].scrollIntoView({inline:"center",block:"nearest"});
+  if(onShow[i])onShow[i]();}
+$$("[data-go]").forEach(b=>b.onclick=()=>show(+b.dataset.go));
+$("#teacherBtn").onclick=()=>{sections.forEach(s=>s.hidden=true);teacher.hidden=false;$$("#nav button").forEach(b=>b.setAttribute("aria-current","false"));window.scrollTo({top:0});};
+/* numéricas */
+$$(".q-num").forEach(q=>{
+  const inp=q.querySelector(".row input"),btn=q.querySelector(".btn"),f=q.querySelector(".fb"),hb=q.querySelector(".hintbtn"),hint=q.querySelector(".hint");
+  btn.textContent="Comprobar";
+  const sw=solBox(q,stepsOf(q,q.dataset.ok));let tries=0;
+  if(hb)hb.onclick=()=>{hint.hidden=false;hb.disabled=true;};
+  const send=()=>{const v=num(inp.value);if(isNaN(v)){fb(f,"bad","Escribe tu respuesta con números.");inp.focus();return;}
+    if(v===Number(q.dataset.answer)){fb(f,"ok","¡Correcto! "+q.dataset.ok);sw.hidden=false;}
+    else{tries++;fb(f,"bad",(tries>1?"Todavía no. ":"No es correcto. ")+q.dataset.bad+(tries>=1?" Si quieres, revisa la resolución paso a paso.":""));sw.hidden=false;shake(q);}};
+  btn.onclick=send;inp.addEventListener("keydown",e=>{if(e.key==="Enter")send();});
+});
+/* opción múltiple */
+$$(".q-mc").forEach(q=>{
+  const bs=[...q.querySelectorAll(".mc button")],f=q.querySelector(".fb"),ans=+q.dataset.answer;
+  const fallback="La respuesta correcta es: "+bs[ans].textContent.trim()+". "+(bs[ans].dataset.why||"")+(q.dataset.check?" Comprobación: "+q.dataset.check:"");
+  const sw=solBox(q,stepsOf(q,fallback));
+  bs.forEach((b,i)=>b.onclick=()=>{bs.forEach(x=>x.classList.remove("right","wrong"));
+    const ok=i===ans;b.classList.add(ok?"right":"wrong");
+    let m=b.dataset.why||(ok?"¡Correcto!":"No es esa. Vuelve a mirar la expresión.");
+    if(ok&&q.dataset.check)m+=" Comprobación: "+q.dataset.check;
+    fb(f,ok?"ok":"bad",(ok&&!/^correcto/i.test(m)?"¡Correcto! ":"")+m);sw.hidden=false;});
+});
+/* abiertas: respuesta modelo */
+$$(".q-text").forEach(q=>{const ta=q.querySelector("textarea"),f=q.querySelector(".fb"),btn=q.querySelector(".btn");btn.textContent="Comparar con una respuesta modelo";
+  const sw=q.dataset.sol?solBox(q,stepsOf(q,""),"Respuesta modelo"):null;
+  btn.onclick=()=>{if(!ta.value.trim()){fb(f,"bad","Primero escribe tu respuesta; después compárala.");ta.focus();return;}
+    fb(f,"info","Bien. Compara tu respuesta con la del modelo: ¿qué tienen en común? ¿Qué te faltó?");if(sw){sw.hidden=false;sw.querySelector(".sol").hidden=false;sw.querySelector(".solbtn").textContent="Ocultar";}};});
+{const q=$("#self");if(q){const f=$("#selfFb");$("#selfSave").textContent="Ver mi resultado";
+ $("#selfSave").onclick=()=>{const v=["c1","c2","c3"].map(n=>{const r=q.querySelector(`input[name=${n}]:checked`);return r?r.value:"";});
+  if(v.every(x=>!x)){fb(f,"bad","Marca al menos una opción.");return;}
+  const help=v.filter(x=>x==="Necesito ayuda").length,proc=v.filter(x=>x==="En proceso").length;
+  fb(f,help?"bad":proc?"info":"ok",help?"Marca en tu ficha qué criterio te costó y vuelve a esa etapa: revisa la resolución paso a paso de sus preguntas.":proc?"Vas bien. Repasa la etapa del criterio «en proceso» antes de la próxima clase.":"¡Excelente! Intenta los retos bonus si aún no los hiciste.");};}}
+/* tabla de cálculo mental */
+function mago(tb,items,label){items.forEach(([q,ans,h])=>{const tr=document.createElement("tr");
+  tr.innerHTML=`<td class="q">${q}</td><td><div class="row"><input type="text" class="ans" inputmode="numeric" placeholder="Resultado" aria-label="Resultado de ${q}"><button class="btn">Comprobar</button><button class="ghost">Pista</button></div><div class="hint" hidden>${h}</div><div class="fb" hidden></div></td><td class="timer">0,0 s</td>`;
+  tb.appendChild(tr);
+  const inp=tr.querySelector(".ans"),[ok,hb]=tr.querySelectorAll("button"),hint=tr.querySelector(".hint"),f=tr.querySelector(".fb"),tm=tr.querySelector(".timer");
+  let start=null,iv=null;const stop=()=>{clearInterval(iv);iv=null;};const secs=()=>start?((performance.now()-start)/1000).toFixed(1).replace(".",","):"—";
+  inp.addEventListener("focus",()=>{if(start)return;start=performance.now();iv=setInterval(()=>tm.textContent=secs()+" s",100);});
+  hb.onclick=()=>{hint.hidden=false;hb.disabled=true;};
+  const send=()=>{const v=num(inp.value);if(isNaN(v)){fb(f,"bad","Escribe el resultado con números.");inp.focus();return;}
+    if(v===ans){stop();fb(f,"ok",`¡Correcto en ${secs()} s! ${h} = ${fmt(ans)}`);}
+    else{fb(f,"bad",`No es correcto. Resolución: ${h} = ${fmt(ans)}. Revisa en qué paso te desviaste.`);}};
+  ok.onclick=send;inp.addEventListener("keydown",e=>{if(e.key==="Enter")send();});});}
+/* ===== actividades propias de la sesión ===== */
+
+
+/* probador */
+function probe(){const a=num($("#pa").value),b=num($("#pb").value);if(isNaN(a)||isNaN(b))return;const L=(a+b)**3,R=a**3+b**3;
+  $("#pl").textContent=`(${a} + ${b})³ = ${L}`;$("#pr").textContent=`${a}³ + ${b}³ = ${R}`;
+  L===R?fb($("#pv"),"ok","¡Aquí sí coinciden! ¿Qué tienen de especial estos valores?"):fb($("#pv"),"bad",`No coinciden: faltan ${L-R}. Un solo caso que falle basta para decir «no siempre».`);}
+$("#pa").oninput=probe;$("#pb").oninput=probe;probe();
+/* cubo 3D girable */
+const COLS=["--ta","--tab","--tc","--tb"],NAMES=["a³","a²b","ab²","b³"],COUNT=[1,3,3,1];
+const FACES=[[[0,0,1],[[0,0,1],[1,0,1],[1,1,1],[0,1,1]]],[[0,0,-1],[[0,0,0],[0,1,0],[1,1,0],[1,0,0]]],[[1,0,0],[[1,0,0],[1,1,0],[1,1,1],[1,0,1]]],
+  [[-1,0,0],[[0,0,0],[0,0,1],[0,1,1],[0,1,0]]],[[0,1,0],[[0,1,0],[0,1,1],[1,1,1],[1,1,0]]],[[0,-1,0],[[0,0,0],[1,0,0],[1,0,1],[0,0,1]]]];
+const cubes={};
+function Cube(id,o){const el=$("#"+id);const C={el,a:3,b:2,e:.55,yaw:-0.75,pitch:0.55,show:[1,1,1,1],ghost:false,sel:null,spin:false,onPick:null,...o};
+  C.y0=C.yaw;C.p0=C.pitch;
+  C.draw=function(){const {a,b}=C,L=a+b,g=L*.45*C.e,G=el;G.innerHTML="";
+    const T=L+g,R=Math.sqrt(3)*T/2*1.04;G.setAttribute("viewBox",`${-R} ${-R} ${2*R} ${2*R}`);
+    const cy=Math.cos(C.yaw),sy=Math.sin(C.yaw),cp=Math.cos(C.pitch),sp=Math.sin(C.pitch);
+    const rot=(x,y,z)=>{const x1=x*cy-y*sy,y1=x*sy+y*cy;return [x1,y1*cp-z*sp,y1*sp+z*cp];};
+    const polys=[];
+    for(const i of[0,1])for(const j of[0,1])for(const k of[0,1]){const n=i+j+k,vis=C.show[n];if(!vis&&!C.ghost)continue;
+      const x0=i?a+g:0,y0=j?a+g:0,z0=k?a+g:0,w=i?b:a,d=j?b:a,h=k?b:a;
+      FACES.forEach(([nv,vs])=>{const nr=rot(...nv);if(vis&&nr[1]>=0)return;
+        const pts=vs.map(([u,v,t])=>rot(x0+u*w-T/2,y0+v*d-T/2,z0+t*h-T/2));
+        polys.push({n,vis,nr,pts,depth:pts.reduce((s,p)=>s+p[1],0)/4,box:`${i}${j}${k}`,center:rot(x0+w/2-T/2,y0+d/2-T/2,z0+h/2-T/2)});});}
+    polys.sort((p,q)=>(p.vis-q.vis)||(q.depth-p.depth));
+    polys.forEach(P=>{const pts=P.pts.map(p=>`${p[0].toFixed(3)},${(-p[2]).toFixed(3)}`).join(" ");
+      if(!P.vis){svg("polygon",{points:pts,fill:"none",stroke:css("--muted"),"stroke-width":1.2,"stroke-dasharray":"4 3","vector-effect":"non-scaling-stroke"},G);return;}
+      const dim=C.sel!==null&&C.sel!==P.n;
+      const poly=svg("polygon",{points:pts,fill:css(COLS[P.n]),stroke:css("--card"),"stroke-width":1.5,"vector-effect":"non-scaling-stroke","stroke-linejoin":"round","data-n":P.n,opacity:dim?.18:1},G);
+      const facing=-P.nr[1],light=Math.max(0,P.nr[2])*.5+facing*.5;
+      svg("polygon",{points:pts,fill:"#000","fill-opacity":(.34*(1-light)).toFixed(3),"pointer-events":"none",opacity:dim?.18:1},G);});
+    if(C.e>.25){const seen={};polys.filter(P=>P.vis&&!seen[P.box]&&(seen[P.box]=1)).sort((p,q)=>q.center[1]-p.center[1]).forEach(P=>{
+      if(C.sel!==null&&C.sel!==P.n)return;const fs=Math.max(.45,Math.min(C.a,C.b)*.42);
+      const t=svg("text",{x:P.center[0],y:-P.center[2]+fs*.35,"text-anchor":"middle","font-size":fs,fill:"#0d1526","pointer-events":"none","font-weight":"700"},G);t.textContent=NAMES[P.n];});}
+  };
+  let drag=null,moved=0;
+  el.style.touchAction="none";el.style.cursor="grab";
+  el.addEventListener("pointerdown",e=>{drag=[e.clientX,e.clientY];moved=0;C.spin=false;el.setPointerCapture(e.pointerId);el.style.cursor="grabbing";});
+  el.addEventListener("pointermove",e=>{if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];moved+=Math.abs(dx)+Math.abs(dy);drag=[e.clientX,e.clientY];
+    C.yaw-=dx*.012;C.pitch=Math.max(-1.45,Math.min(1.45,C.pitch+dy*.012));C.draw();});
+  el.addEventListener("pointerup",e=>{el.style.cursor="grab";const was=drag;drag=null;if(!was||moved>6)return;
+    const t=document.elementFromPoint(e.clientX,e.clientY);const n=t&&t.getAttribute&&t.getAttribute("data-n");
+    C.sel=(n===null||n===undefined||C.sel===+n)?null:+n;C.draw();if(C.onPick)C.onPick(C.sel);});
+  el.addEventListener("keydown",e=>{const k={ArrowLeft:[.15,0],ArrowRight:[-.15,0],ArrowUp:[0,-.12],ArrowDown:[0,.12]}[e.key];if(!k)return;e.preventDefault();
+    C.yaw+=k[0];C.pitch=Math.max(-1.45,Math.min(1.45,C.pitch+k[1]));C.draw();});
+  C.reset=()=>{C.yaw=C.y0;C.pitch=C.p0;C.spin=false;C.sel=null;C.draw();if(C.onPick)C.onPick(null);};
+  cubes[id]=C;C.draw();return C;}
+function spinLoop(){Object.values(cubes).forEach(C=>{if(C.spin&&C.el.isConnected&&C.el.getBoundingClientRect().width){C.yaw-=.012;C.draw();}});requestAnimationFrame(spinLoop);}
+if(!reduce)requestAnimationFrame(spinLoop);
+$$("[data-reset]").forEach(b=>b.onclick=()=>cubes[b.dataset.reset].reset());
+$$("[data-spin]").forEach(b=>{if(reduce){b.hidden=true;return;}b.onclick=()=>{const C=cubes[b.dataset.spin];C.spin=!C.spin;b.textContent=C.spin?"Detener":"Girar solo";};});
+/* cubo de Mateo */
+Cube("cubeMateo",{a:3,b:2,e:.35,show:[1,0,0,1],ghost:true});
+/* cubo principal */
+const main=Cube("cubeMain",{onPick:n=>{const C=cubes.cubeMain,i=$("#cinfo");
+  if(n===null){fb(i,"info","Toca una pieza del cubo.");return;}
+  const dims=[["a","a","a"],["a","a","b"],["a","b","b"],["b","b","b"]][n].map(x=>x==="a"?C.a:C.b);
+  fb(i,"info",`Pieza ${NAMES[n]}: mide ${dims.join(" × ")} = ${dims[0]*dims[1]*dims[2]}. Hay ${COUNT[n]} pieza${COUNT[n]>1?"s":""} de este tipo: aportan ${COUNT[n]} × ${dims[0]*dims[1]*dims[2]} = ${COUNT[n]*dims[0]*dims[1]*dims[2]}.`);}});
+const tc=$("#typechips");
+NAMES.forEach((nm,n)=>{const b=document.createElement("button");b.className="tchip";b.setAttribute("aria-pressed","true");
+  b.innerHTML=`<i class="sw" style="background:var(${COLS[n]})"></i>${nm}`;
+  b.onclick=()=>{main.show[n]=main.show[n]?0:1;b.setAttribute("aria-pressed",!!main.show[n]);main.draw();};tc.appendChild(b);});
+function drawCube(){const a=+$("#ca").value,b=+$("#cb").value;$("#cav").textContent=a;$("#cbv").textContent=b;
+  main.a=a;main.b=b;main.e=+$("#ce").value/100;main.draw();if(main.sel!==null)main.onPick(main.sel);
+  $("#cform").textContent=`(${a} + ${b})³ = ${a**3} + 3·${a*a*b} + 3·${a*b*b} + ${b**3} = ${(a+b)**3}`;}
+["#ca","#cb","#ce"].forEach(id=>$(id).oninput=drawCube);drawCube();
+/* cubo del ejercicio */
+{const q=$('.q-num[data-key="s2q1b"]'),box=document.createElement("div");box.className="cubebox";
+ box.innerHTML='<svg class="cube3d" id="cubeEx" tabindex="0" role="img" aria-label="Cubo girable con a igual a 4 y b igual a 1; solo se ven las piezas a b al cuadrado"></svg><div class="row" style="justify-content:center"><button class="ghost small" id="exReset">Vista inicial</button></div>';
+ q.querySelector("h3").after(box);const X=Cube("cubeEx",{a:4,b:1,e:.6,show:[0,0,1,0],ghost:true});$("#exReset").onclick=()=>X.reset();}
+
+/* mago */
+mago($("#mago"),[["11³",1331,"(10 + 1)³ = 1000 + 300 + 30 + 1"],["12³",1728,"(10 + 2)³ = 1000 + 600 + 120 + 8"],["21³",9261,"(20 + 1)³ = 8000 + 1200 + 60 + 1"],
+  ["99³",970299,"(100 − 1)³ = 1 000 000 − 30 000 + 300 − 1"],["101³",1030301,"(100 + 1)³ = 1 000 000 + 30 000 + 300 + 1"]],"Cálculo mental");
+/* verificador */
+const f=n=>String(n).replace("-","−");
+function ver(){const a=+$("#va").value,b=+$("#vb").value;$("#vav").textContent=f(a);$("#vbv").textContent=f(b);
+  $("#vs").textContent=`${f(a)}³ + ${f(b)}³ = ${f(a**3+b**3)}  y  (${f(a+b)})(${f(a*a-a*b+b*b)}) = ${f((a+b)*(a*a-a*b+b*b))}`;
+  $("#vd").textContent=`${f(a)}³ − ${f(b)}³ = ${f(a**3-b**3)}  y  (${f(a-b)})(${f(a*a+a*b+b*b)}) = ${f((a-b)*(a*a+a*b+b*b))}`;}
+$("#va").oninput=ver;$("#vb").oninput=ver;ver();
+onShow[0]=()=>cubes.cubeMateo.draw();onShow[1]=()=>{drawCube();cubes.cubeEx.draw();};
+
+show(Math.min(st.stage||0,sections.length-1));
+})();
+
+</script>
