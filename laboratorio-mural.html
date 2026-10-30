@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laboratorio del Mural</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: hoja de cuaderno cuadriculado; tinta azul del estudiante y lapicero rojo del docente. Dos columnas (mural + gráfica) sobre una barra de misiones. */
+:root{
+  --paper:#f7f9fc; --grid:#dfe7f2; --card:#ffffff; --ink:#1d2f6f; --text:#1c2333; --muted:#5b6478;
+  --red:#c42b36; --red-soft:#fbe9ea; --ok:#23744a; --ok-soft:#e3f3ea; --tape:#e8a51c; --wall:#9aa3b5; --line:#c9d3e3;
+  --f-display:"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0f1522; --grid:#1a2335; --card:#151d2e; --ink:#9db7ff; --text:#e6eaf3; --muted:#9aa4ba;
+  --red:#ff7b84; --red-soft:#3a1d22; --ok:#6fd49c; --ok-soft:#173226; --tape:#f2b941; --wall:#5d6780; --line:#2a3550; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0f1522; --grid:#1a2335; --card:#151d2e; --ink:#9db7ff; --text:#e6eaf3; --muted:#9aa4ba;
+  --red:#ff7b84; --red-soft:#3a1d22; --ok:#6fd49c; --ok-soft:#173226; --tape:#f2b941; --wall:#5d6780; --line:#2a3550; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--text);font-family:var(--f-body);font-size:16px;line-height:1.5;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1120px;margin:0 auto;display:grid;gap:18px}
+header{display:grid;gap:8px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(28px,5vw,44px);line-height:1.05;margin:0;color:var(--ink);text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:600;font-size:22px;margin:0;color:var(--ink);text-wrap:balance}
+h3{font-size:16px;margin:0}
+.situacion{max-width:68ch;margin:0;color:var(--text)}
+.situacion b{color:var(--ink)}
+.controls-top{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:inline-flex;border:1.5px solid var(--ink);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;color:var(--ink);font:600 14px var(--f-body);padding:7px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+nav.missions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+nav.missions button{text-align:left;border:1.5px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:10px 12px;cursor:pointer;font:inherit;display:grid;gap:2px;min-width:0}
+nav.missions button span{font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+nav.missions button strong{font-size:14px;overflow-wrap:anywhere}
+nav.missions button[aria-current="step"]{border-color:var(--ink);box-shadow:inset 0 -3px 0 var(--ink)}
+nav.missions button.done strong::after{content:" ✓";color:var(--ok)}
+.board{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px;min-width:0}
+.panel svg{width:100%;height:auto;display:block}
+.readout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.readout div{border-top:2px solid var(--line);padding-top:6px;min-width:0}
+.readout small{display:block;font-size:12px;color:var(--muted)}
+.readout b{font-family:var(--f-mono);font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums}
+.readout .area b{color:var(--red)}
+label{font-weight:700;font-size:14px}
+input[type=range]{width:100%;accent-color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1.5px solid var(--ink);background:var(--ink);color:var(--card);font:700 14px var(--f-body);padding:8px 14px;border-radius:8px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.small{padding:4px 8px;font-size:12px}
+.btn:focus-visible,nav button:focus-visible,.seg button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--tape);outline-offset:2px}
+.tablewrap{overflow-x:auto;max-height:240px;overflow-y:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:var(--card);color:var(--muted);font-weight:600}
+tr.best td{color:var(--red);font-weight:600}
+td.ex{color:var(--muted);font-style:italic}
+.mission{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px}
+.mission p{margin:0;max-width:70ch}
+.formula{font-family:var(--f-mono);font-size:18px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--ink)}
+.formula input[type=text]{width:76px;font:600 16px var(--f-mono);padding:6px;border:1.5px solid var(--line);border-radius:6px;background:var(--paper);color:var(--text);text-align:center}
+textarea,select,input[type=text]{font:inherit;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper);color:var(--text);width:100%}
+textarea{min-height:84px;resize:vertical}
+.pen{font-family:var(--f-body);font-style:italic;border-left:3px solid var(--red);background:var(--red-soft);color:var(--text);padding:10px 12px;border-radius:0 8px 8px 0}
+.pen.ok{border-color:var(--ok);background:var(--ok-soft)}
+.pen b{font-style:normal}
+.claim{border:1px dashed var(--line);border-radius:10px;padding:12px;display:grid;gap:10px}
+.claim q{font-family:var(--f-display);font-size:18px;color:var(--ink)}
+.hint{font-size:14px;color:var(--muted)}
+.chip{display:inline-block;font-family:var(--f-mono);font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+pre.report{white-space:pre-wrap;font-family:var(--f-mono);font-size:13px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0;max-height:340px;overflow:auto}
+footer{font-size:13px;color:var(--muted)}
+footer a{color:var(--ink)}
+@media (max-width:820px){.board{grid-template-columns:1fr}nav.missions{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:no-preference){.mural-rect{transition:all .15s ease}}
+</style>
+</head><body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Matemática · 5.° de secundaria · Función cuadrática</div>
+    <h1>Laboratorio del Mural</h1>
+    <p class="situacion" id="situacion"></p>
+    <div class="controls-top">
+      <span class="hint">Material:</span>
+      <div class="seg" role="group" aria-label="Material del borde">
+        <button id="mat-cinta" aria-pressed="true">Cinta de 12 m</button>
+        <button id="mat-pita" aria-pressed="false">Pita de 40 cm</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="missions" aria-label="Misiones">
+    <button data-m="1"><span>Misión 1</span><strong>Explora</strong></button>
+    <button data-m="2"><span>Misión 2</span><strong>Modela</strong></button>
+    <button data-m="3"><span>Misión 3</span><strong>Argumenta</strong></button>
+    <button data-m="4"><span>Misión 4</span><strong>Reto: contra la pared</strong></button>
+    <button data-m="5"><span>Cierre</span><strong>Mi informe</strong></button>
+  </nav>
+
+  <section class="board" id="board">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h2 id="mural-title">Tu periódico mural</h2><span class="chip" id="mode-chip">4 lados con cinta</span></div>
+      <svg id="mural" viewBox="0 0 340 230" role="img" aria-label="Dibujo a escala del periódico mural"></svg>
+      <div>
+        <label for="x">Ancho <span id="x-label-unit"></span>: <span id="x-val" style="font-family:var(--f-mono)"></span></label>
+        <input type="range" id="x" min="0" max="6" step="0.1" value="1.5">
+      </div>
+      <div class="readout">
+        <div><small id="lbl-a">Ancho (x)</small><b id="r-x"></b></div>
+        <div><small id="lbl-b">Alto</small><b id="r-y"></b></div>
+        <div class="area"><small>Área A(x)</small><b id="r-a"></b></div>
+      </div>
+      <div class="row">
+        <button class="btn" id="add">Registrar medida</button>
+        <button class="btn ghost" id="clear">Borrar tabla</button>
+        <span class="hint" id="count"></span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Gráfica ancho – área</h2>
+      <svg id="plot" viewBox="0 0 380 280" role="img" aria-label="Puntos registrados del área según el ancho"></svg>
+      <div class="tablewrap"><table aria-label="Tabla de medidas registradas">
+        <thead><tr><th>x</th><th id="th-y">alto</th><th>A(x)</th><th></th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <section class="mission" id="m1">
+    <h2>Misión 1 · Explora</h2>
+    <p>Mueve el deslizador para cambiar el ancho del mural. El borde siempre usa todo el material, así que si el ancho crece, el alto se achica. <b>Registra al menos 6 medidas distintas</b> y observa la forma que dibujan los puntos.</p>
+    <div class="grid2">
+      <div><label for="m1-q1">¿Qué forma tienen los puntos en la gráfica?</label><textarea id="m1-q1" placeholder="Los puntos forman…"></textarea></div>
+      <div><label for="m1-q2">Según tu tabla, ¿qué ancho da más área? ¿Qué forma tiene ese mural?</label><textarea id="m1-q2" placeholder="El mayor área la obtuve con x = … y el mural es…"></textarea></div>
+    </div>
+    <div class="pen" id="m1-fb" hidden></div>
+  </section>
+
+  <section class="mission" id="m2" hidden>
+    <h2>Misión 2 · Modela</h2>
+    <p>Escribe la regla del área como A(x) = ax² + bx + c. Recuerda: <b>área = ancho × alto</b>, y el alto depende del ancho. Prueba tu regla: la curva aparecerá sobre tus puntos.</p>
+    <div class="formula" aria-label="Regla del área">A(x) =
+      <input id="ca" type="text" inputmode="decimal" aria-label="coeficiente a" placeholder="a"> x² +
+      <input id="cb" type="text" inputmode="decimal" aria-label="coeficiente b" placeholder="b"> x +
+      <input id="cc" type="text" inputmode="decimal" aria-label="coeficiente c" placeholder="c">
+    </div>
+    <div class="row"><button class="btn" id="test-rule">Probar mi regla</button><button class="btn ghost" id="hint-btn">Necesito una pista</button><span class="chip" id="hint-count">Pistas usadas: 0</span></div>
+    <div class="pen" id="hint-box" hidden></div>
+    <div class="pen" id="m2-fb" hidden></div>
+    <h3>¿Dónde está el vértice?</h3>
+    <div class="formula">V = ( <input id="vx" type="text" inputmode="decimal" aria-label="x del vértice" placeholder="x"> ; <input id="va" type="text" inputmode="decimal" aria-label="área del vértice" placeholder="A"> )</div>
+    <div class="row"><button class="btn" id="check-v">Verificar vértice</button></div>
+    <div class="pen" id="v-fb" hidden></div>
+    <p class="hint">Puedes comprobar tu regla en <a href="https://www.geogebra.org/graphing" target="_blank" rel="noopener">GeoGebra Calculadora Gráfica</a>: escríbela y usa la herramienta «Extremo».</p>
+  </section>
+
+  <section class="mission" id="m3" hidden>
+    <h2>Misión 3 · Argumenta</h2>
+    <p>Dos compañeros publicaron estas afirmaciones en el grupo del aula. Decide si estás de acuerdo y <b>justifica con datos de tu tabla o de tu gráfica</b>.</p>
+    <div class="claim">
+      <q>Si el ancho aumenta, el área siempre aumenta.</q> <span class="hint">— Mateo</span>
+      <select id="c1" aria-label="Postura sobre la afirmación de Mateo"><option value="">Elige tu postura…</option><option value="si">Estoy de acuerdo</option><option value="no">No estoy de acuerdo</option></select>
+      <textarea id="c1t" aria-label="Justificación sobre Mateo" placeholder="No estoy de acuerdo porque, cuando x = …, A = …; pero cuando x = …, A = …"></textarea>
+      <div class="pen" id="c1-fb" hidden></div>
+    </div>
+    <div class="claim">
+      <q>Dos murales con el mismo borde tienen la misma área.</q> <span class="hint">— Lucía</span>
+      <select id="c2" aria-label="Postura sobre la afirmación de Lucía"><option value="">Elige tu postura…</option><option value="si">Estoy de acuerdo</option><option value="no">No estoy de acuerdo</option></select>
+      <textarea id="c2t" aria-label="Justificación sobre Lucía" placeholder="Doy un ejemplo con dos murales de mi tabla…"></textarea>
+      <div class="pen" id="c2-fb" hidden></div>
+    </div>
+    <div class="row"><button class="btn" id="check-args">Revisar mis argumentos</button></div>
+  </section>
+
+  <section class="mission" id="m4" hidden>
+    <h2>Misión 4 · Reto: el mural contra la pared</h2>
+    <p>El rincón de la honestidad irá pegado a la pared: <b>la cinta solo cubre 3 lados</b>. El ancho x es la medida de cada lado perpendicular a la pared. Explora, registra y encuentra el área máxima.</p>
+    <div class="formula">V = ( <input id="px" type="text" inputmode="decimal" aria-label="x del vértice con pared" placeholder="x"> ; <input id="pa" type="text" inputmode="decimal" aria-label="área máxima con pared" placeholder="A"> )</div>
+    <div class="row"><button class="btn" id="check-p">Verificar</button></div>
+    <div class="pen" id="p-fb" hidden></div>
+    <label for="m4-q">¿Por qué ahora la mejor forma ya no es un cuadrado?</label>
+    <textarea id="m4-q" placeholder="Porque la pared…"></textarea>
+  </section>
+
+  <section class="mission" id="m5" hidden>
+    <h2>Cierre · Mi informe</h2>
+    <p>Escribe los nombres de tu equipo, revisa tu informe y cópialo para enviarlo al docente por el grupo de clase.</p>
+    <div class="grid2">
+      <div><label for="team">Equipo</label><input type="text" id="team" placeholder="Nombres de los integrantes"></div>
+      <div><label for="meta">¿Qué aprendí y qué me costó?</label><input type="text" id="meta" placeholder="Aprendí… Me costó…"></div>
+    </div>
+    <pre class="report" id="report"></pre>
+    <div class="row"><button class="btn" id="copy">Copiar informe</button><span class="hint" id="copy-msg" role="status"></span></div>
+  </section>
+
+  <footer>Recurso diseñado por el practicante Ever Wilson Bautista Huahuasoncco · I.E. San Juan Apóstol, Arequipa. Las respuestas se guardan solo en este dispositivo.</footer>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>{if(!isFinite(n))return"—";const r=Math.round(n*10**d)/10**d;return r.toString().replace(".",",")};
+const num=s=>{if(s==null)return NaN;s=String(s).trim().replace(",",".");if(s===""||s==="-")return NaN;return Number(s)};
+const MATS={cinta:{P:12,u:"m",u2:"m²",step:0.1,name:"12 m de cinta decorativa"},pita:{P:40,u:"cm",u2:"cm²",step:0.5,name:"una pita de 40 cm"}};
+let S={mat:"cinta",mission:1,x:{libre:1.5,pared:1.5},pts:{libre:[],pared:[]},hints:0,done:{}};
+try{const s=JSON.parse(localStorage.getItem("labmural")||"null");if(s&&s.pts)S=Object.assign(S,s)}catch(e){}
+const save=()=>{try{localStorage.setItem("labmural",JSON.stringify(S))}catch(e){}};
+const mode=()=>S.mission===4?"pared":"libre";
+const M=()=>MATS[S.mat];
+const xmax=()=>mode()==="pared"?M().P/2:M().P/2;
+const area=(x,m=mode())=>m==="pared"?x*(M().P-2*x):x*(M().P/2-x);
+const other=(x,m=mode())=>m==="pared"?M().P-2*x:M().P/2-x;
+// Datos de ejemplo para que la gráfica no empiece vacía
+function seed(){["libre","pared"].forEach(m=>{if(!S.pts[m].length){const P=M().P;const xs=m==="libre"?[P/12,P/6]:[P/12,P/6];S.pts[m]=xs.map(x=>({x:+x.toFixed(2),ex:true}))}})}
+seed();
+
+function situacion(){
+  $("situacion").innerHTML=`El aula de 5.° tiene <b>${M().name}</b> para el borde del periódico mural y del rincón de la honestidad. Queremos que el mural sea rectangular y que tenga <b>la mayor área posible</b> para publicar. ¿Qué medidas debe tener? Exploren, modelen con una función y defiendan su respuesta con argumentos.`;
+}
+function drawMural(){
+  const svg=$("mural"),m=mode(),P=M().P,x=S.x[m],u=M().u;let h="";
+  const W=340,H=230;
+  if(m==="libre"){
+    const s=160/(P/2);const w=x*s,hh=other(x)*s;const x0=(W-w)/2,y0=(H-hh)/2-4;
+    h+=`<rect class="mural-rect" x="${x0}" y="${y0}" width="${Math.max(w,0.5)}" height="${Math.max(hh,0.5)}" fill="var(--paper)" stroke="var(--tape)" stroke-width="5"/>`;
+    h+=`<text x="${W/2}" y="${y0-8}" text-anchor="middle" font-family="var(--f-mono)" font-size="12" fill="var(--ink)">x = ${fmt(x)} ${u}</text>`;
+    h+=`<text x="${x0+w+8}" y="${y0+hh/2}" font-family="var(--f-mono)" font-size="12" fill="var(--ink)">${fmt(other(x))} ${u}</text>`;
+    h+=`<text x="${W/2}" y="${Math.min(y0+hh+22,H-4)}" text-anchor="middle" font-family="var(--f-display)" font-size="15" fill="var(--red)">A = ${fmt(area(x))} ${M().u2}</text>`;
+  }else{
+    const s=290/P;const L=other(x)*s,d=x*s;const x0=(W-L)/2,y0=34;
+    h+=`<line x1="10" y1="${y0}" x2="${W-10}" y2="${y0}" stroke="var(--wall)" stroke-width="6"/>`;
+    for(let i=14;i<W-10;i+=14)h+=`<line x1="${i}" y1="${y0-3}" x2="${i-8}" y2="${y0-13}" stroke="var(--wall)" stroke-width="1.5"/>`;
+    h+=`<text x="12" y="${y0-16}" font-size="11" fill="var(--muted)" font-family="var(--f-mono)">PARED</text>`;
+    h+=`<rect x="${x0}" y="${y0}" width="${Math.max(L,0.5)}" height="${Math.max(d,0.5)}" fill="var(--paper)"/>`;
+    h+=`<path d="M${x0} ${y0} V${y0+d} H${x0+L} V${y0}" fill="none" stroke="var(--tape)" stroke-width="5"/>`;
+    h+=`<text x="${x0-6}" y="${y0+d/2}" text-anchor="end" font-family="var(--f-mono)" font-size="12" fill="var(--ink)">x = ${fmt(x)}</text>`;
+    h+=`<text x="${W/2}" y="${y0+d+18}" text-anchor="middle" font-family="var(--f-mono)" font-size="12" fill="var(--ink)">${fmt(other(x))} ${u}</text>`;
+    h+=`<text x="${W/2}" y="${Math.min(y0+d+40,H-4)}" text-anchor="middle" font-family="var(--f-display)" font-size="15" fill="var(--red)">A = ${fmt(area(x))} ${M().u2}</text>`;
+  }
+  svg.innerHTML=h;
+}
+let rule=null;
+function niceMax(v){const p=10**Math.floor(Math.log10(v));for(const k of[1,1.2,1.5,2,2.5,3,4,5,6,8,10])if(k*p>=v)return k*p;return 10*p}
+function drawPlot(){
+  const svg=$("plot"),m=mode(),P=M().P;const XM=xmax();const amax=m==="pared"?P*P/8:P*P/16;const YM=niceMax(amax*1.08);
+  const L=46,R=366,T=14,B=246;const sx=v=>L+v/XM*(R-L),sy=v=>B-v/YM*(B-T);let h="";
+  for(let i=0;i<=5;i++){const yv=YM*i/5,xv=XM*i/5;
+    h+=`<line x1="${L}" x2="${R}" y1="${sy(yv)}" y2="${sy(yv)}" stroke="var(--grid)"/>`;
+    h+=`<text x="${L-6}" y="${sy(yv)+4}" text-anchor="end" font-size="11" font-family="var(--f-mono)" fill="var(--muted)">${fmt(yv,1)}</text>`;
+    h+=`<line y1="${T}" y2="${B}" x1="${sx(xv)}" x2="${sx(xv)}" stroke="var(--grid)"/>`;
+    h+=`<text x="${sx(xv)}" y="${B+16}" text-anchor="middle" font-size="11" font-family="var(--f-mono)" fill="var(--muted)">${fmt(xv,1)}</text>`;}
+  h+=`<line x1="${L}" x2="${R}" y1="${B}" y2="${B}" stroke="var(--muted)"/><line x1="${L}" x2="${L}" y1="${T}" y2="${B}" stroke="var(--muted)"/>`;
+  h+=`<text x="${R}" y="${B+30}" text-anchor="end" font-size="11" fill="var(--muted)">ancho x (${M().u})</text>`;
+  h+=`<text x="${L+4}" y="${T+10}" font-size="11" fill="var(--muted)">A (${M().u2})</text>`;
+  if(rule&&m==="libre"){let d="";for(let i=0;i<=80;i++){const xv=XM*i/80,yv=rule.a*xv*xv+rule.b*xv+rule.c;if(yv<-YM||yv>YM*1.5)continue;d+=(d?"L":"M")+sx(xv).toFixed(1)+" "+sy(Math.max(Math.min(yv,YM*1.02),-0.02*YM)).toFixed(1)}
+    h+=`<path d="${d}" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-dasharray="${rule.ok?"0":"6 4"}"/>`;}
+  if(S.done[m==="libre"?"v":"p"]){const xv=m==="libre"?P/4:P/4,yv=area(xv);h+=`<line x1="${sx(xv)}" x2="${sx(xv)}" y1="${sy(yv)}" y2="${B}" stroke="var(--ok)" stroke-dasharray="3 3"/><text x="${sx(xv)+6}" y="${sy(yv)-8}" font-size="12" font-family="var(--f-mono)" fill="var(--ok)">vértice (${fmt(xv)} ; ${fmt(yv)})</text>`}
+  S.pts[m].forEach(p=>{const a=area(p.x);h+=`<circle cx="${sx(p.x)}" cy="${sy(a)}" r="5" fill="${p.ex?"var(--card)":"var(--red)"}" stroke="var(--red)" stroke-width="2"><title>x = ${fmt(p.x)}, A = ${fmt(area(p.x))}</title></circle>`});
+  const cx=S.x[m];h+=`<circle cx="${sx(cx)}" cy="${sy(area(cx))}" r="8" fill="none" stroke="var(--ink)" stroke-width="2"/>`;
+  svg.innerHTML=h;
+}
+function drawTable(){
+  const m=mode(),pts=[...S.pts[m]].sort((a,b)=>a.x-b.x);const best=pts.length?Math.max(...pts.map(p=>area(p.x))):null;
+  $("tbody").innerHTML=pts.map(p=>{const a=area(p.x);return `<tr class="${a===best&&pts.length>2?"best":""}"><td class="${p.ex?"ex":""}">${fmt(p.x)}</td><td>${fmt(other(p.x))}</td><td>${fmt(a)}</td><td><button class="btn ghost small" data-del="${p.x}" aria-label="Quitar x = ${fmt(p.x)}">quitar</button></td></tr>`}).join("");
+  const real=S.pts[m].filter(p=>!p.ex).length;$("count").textContent=`${real} medidas registradas${S.pts[m].some(p=>p.ex)?" + ejemplos":""}`;
+  $("th-y").textContent=m==="pared"?"largo":"alto";
+}
+function drawReadout(){
+  const m=mode(),x=S.x[m],u=M().u;$("x").max=xmax();$("x").step=M().step;$("x").value=x;
+  $("x-val").textContent=`${fmt(x)} ${u}`;$("r-x").textContent=fmt(x);$("r-y").textContent=fmt(other(x));$("r-a").textContent=fmt(area(x));
+  $("lbl-b").textContent=m==="pared"?"Largo (pegado a la pared)":"Alto";$("lbl-a").textContent=m==="pared"?"Ancho (x)":"Ancho (x)";
+  $("mode-chip").textContent=m==="pared"?"3 lados con cinta":"4 lados con cinta";$("mural-title").textContent=m==="pared"?"Rincón contra la pared":"Tu periódico mural";
+}
+function render(){situacion();drawReadout();drawMural();drawPlot();drawTable();
+  document.querySelectorAll("nav.missions button").forEach(b=>{const k=+b.dataset.m;b.setAttribute("aria-current",k===S.mission?"step":"false");b.classList.toggle("done",!!S.done["m"+k])});
+  for(let k=1;k<=5;k++)$("m"+k).hidden=k!==S.mission;$("board").hidden=S.mission===5;
+  $("mat-cinta").setAttribute("aria-pressed",S.mat==="cinta");$("mat-pita").setAttribute("aria-pressed",S.mat==="pita");
+  if(S.mission===5)buildReport();save();}
+function pen(id,html,ok){const e=$(id);e.innerHTML=html;e.classList.toggle("ok",!!ok);e.hidden=false}
+
+$("x").addEventListener("input",e=>{S.x[mode()]=+(+e.target.value).toFixed(2);drawReadout();drawMural();drawPlot()});
+$("add").onclick=()=>{const m=mode(),x=S.x[m];S.pts[m]=S.pts[m].filter(p=>!p.ex||Math.abs(p.x-x)>1e-9);if(!S.pts[m].some(p=>Math.abs(p.x-x)<1e-9))S.pts[m].push({x});
+  const real=S.pts[m].filter(p=>!p.ex).length;if(m==="libre"&&real>=6){S.done.m1=true;pen("m1-fb","<b>¡Buen registro!</b> ¿Notas que el área sube, llega a un punto máximo y luego baja? Esa forma se llama <b>parábola</b>. Pasa a la Misión 2 para encontrar su regla.",true)}render()};
+$("clear").onclick=()=>{S.pts[mode()]=[];rule=null;render()};
+$("tbody").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(!b)return;const v=+b.dataset.del;S.pts[mode()]=S.pts[mode()].filter(p=>p.x!==v);render()});
+document.querySelectorAll("nav.missions button").forEach(b=>b.onclick=()=>{S.mission=+b.dataset.m;render()});
+$("mat-cinta").onclick=()=>{if(S.mat!=="cinta"){S.mat="cinta";S.pts={libre:[],pared:[]};S.x={libre:1.5,pared:1.5};S.done={};rule=null;seed();render()}};
+$("mat-pita").onclick=()=>{if(S.mat!=="pita"){S.mat="pita";S.pts={libre:[],pared:[]};S.x={libre:5,pared:5};S.done={};rule=null;seed();render()}};
+
+const HINTS=()=>{const h=M().P/2;return[
+ "<b>Pista 1 (pregunta):</b> Si el ancho es x, ¿cuánto mide el alto? Recuerda que ancho + alto es la mitad del borde.",
+ `<b>Pista 2 (herramienta):</b> El alto es ${fmt(h)} − x. Multiplica: A(x) = x · (${fmt(h)} − x). Ahora aplica la propiedad distributiva.`,
+ `<b>Pista 3 (modelo parcial):</b> x · ${fmt(h)} = ${fmt(h)}x y x · (−x) = −x². Entonces a = −1. ¿Cuánto valen b y c?`]};
+$("hint-btn").onclick=()=>{const H=HINTS();const i=Math.min(S.hints,2);pen("hint-box",H[i]);S.hints=Math.min(S.hints+1,3);$("hint-count").textContent=`Pistas usadas: ${S.hints}`;save()};
+$("test-rule").onclick=()=>{const a=num($("ca").value),b=num($("cb").value),c=num($("cc").value||"0");
+  if([a,b,c].some(isNaN)){pen("m2-fb","Completa los coeficientes a y b con números (c puede ser 0).");return}
+  const pts=S.pts.libre;const tol=M().P*M().P/16*0.02+0.01;const hit=pts.filter(p=>Math.abs(a*p.x*p.x+b*p.x+c-area(p.x,"libre"))<=tol).length;
+  rule={a,b,c,ok:hit===pts.length&&pts.length>0};S.rule={a,b,c};
+  if(rule.ok){pen("m2-fb",`<b>Tu curva pasa por los ${pts.length} puntos.</b> Escribiste un modelo que describe todos tus datos. ¿Por qué el coeficiente a es negativo? ¿Qué te dice eso sobre la abertura de la parábola?`,true)}
+  else{const p=pts.find(p=>Math.abs(a*p.x*p.x+b*p.x+c-area(p.x,"libre"))>tol);pen("m2-fb",`Tu curva pasa por ${hit} de ${pts.length} puntos. Revisa el punto x = ${fmt(p.x)}: tu regla da A = ${fmt(a*p.x*p.x+b*p.x+c)}, pero el área medida es ${fmt(area(p.x,"libre"))}. ¿Qué coeficiente ajustarías?`)}
+  drawPlot();save()};
+$("check-v").onclick=()=>{const vx=num($("vx").value),va=num($("va").value),P=M().P,X=P/4,A=X*X;
+  if(isNaN(vx)||isNaN(va)){pen("v-fb","Escribe las dos coordenadas del vértice.");return}
+  if(Math.abs(vx-X)<0.02*P&&Math.abs(va-A)<0.02*A){S.done.v=true;S.done.m2=true;pen("v-fb",`<b>¡Correcto!</b> Con x = ${fmt(X)} ${M().u}, el alto también mide ${fmt(X)} ${M().u}: el mural de mayor área es un <b>cuadrado</b> de ${fmt(A)} ${M().u2}. ¿Cómo lo comprobarías con x = −b / 2a?`,true)}
+  else if(Math.abs(vx-X)<0.02*P){pen("v-fb",`El ancho es correcto. Ahora reemplaza x = ${fmt(vx)} en tu regla para hallar el área máxima.`)}
+  else if(Math.abs(va-area(vx,"libre"))<0.02*A){pen("v-fb",`Ese punto sí está en la parábola, pero no es el más alto. Busca en la gráfica el punto donde la curva deja de subir. Pista: x = −b / 2a.`)}
+  else pen("v-fb","Revisa: el vértice es el punto más alto de la parábola. Usa x = −b / 2a y luego calcula A(x).");
+  render()};
+$("check-args").onclick=()=>{const pts=[...S.pts.libre].sort((a,b)=>a.x-b.x);let pair=null;
+  for(let i=0;i<pts.length-1;i++)if(area(pts[i+1].x,"libre")<area(pts[i].x,"libre")){pair=[pts[i],pts[i+1]];break}
+  const c1=$("c1").value,t1=$("c1t").value.trim(),c2=$("c2").value,t2=$("c2t").value.trim();const hasNum=t=>/\d/.test(t);
+  if(!c1)pen("c1-fb","Elige tu postura antes de justificar.");
+  else if(c1==="si")pen("c1-fb",pair?`Mira tu tabla: con x = ${fmt(pair[0].x)} el área es ${fmt(area(pair[0].x,"libre"))}, y con x = ${fmt(pair[1].x)} (un ancho mayor) el área es ${fmt(area(pair[1].x,"libre"))}. ¿El área aumentó?`:`Registra un ancho mayor que ${fmt(M().P/4)} y compara su área con la del cuadrado. ¿Qué pasa?`);
+  else if(!hasNum(t1))pen("c1-fb","Tu postura es correcta. Para que el argumento convenza, usa <b>un contraejemplo con números</b> de tu tabla: dos anchos y sus áreas.");
+  else pen("c1-fb","<b>Argumento sólido:</b> usaste un contraejemplo con datos. Para completarlo, menciona hasta qué ancho el área sí aumenta (el vértice).",true);
+  if(!c2)pen("c2-fb","Elige tu postura antes de justificar.");
+  else if(c2==="si")pen("c2-fb","Compara dos filas de tu tabla: todos esos murales usan el mismo borde. ¿Tienen la misma área?");
+  else if(!hasNum(t2))pen("c2-fb","Tu postura es correcta. Agrega <b>un ejemplo concreto</b>: dos murales con el mismo borde y áreas distintas.");
+  else pen("c2-fb","<b>Bien argumentado.</b> Mostraste con datos que el mismo perímetro puede encerrar áreas distintas.",true);
+  if(c1==="no"&&hasNum(t1)&&c2==="no"&&hasNum(t2)){S.done.m3=true;render()}else save()};
+$("check-p").onclick=()=>{const vx=num($("px").value),va=num($("pa").value),P=M().P,X=P/4,A=P*P/8;
+  if(isNaN(vx)||isNaN(va)){pen("p-fb","Escribe el ancho y el área máxima.");return}
+  if(Math.abs(vx-X)<0.02*P&&Math.abs(va-A)<0.02*A){S.done.p=true;S.done.m4=true;pen("p-fb",`<b>¡Correcto!</b> A(x) = x(${fmt(P)} − 2x) tiene su máximo en x = ${fmt(X)} ${M().u}: el mural mide ${fmt(X)} × ${fmt(P/2)} ${M().u} y su área es ${fmt(A)} ${M().u2}, el doble que con 4 lados. Explica abajo por qué.`,true)}
+  else pen("p-fb",`Escribe primero la regla: si cada lado perpendicular mide x, el lado pegado a la pared mide ${fmt(P)} − 2x. Luego busca el vértice con x = −b / 2a.`);
+  render()};
+["m1-q1","m1-q2","c1t","c2t","m4-q","team","meta","ca","cb","cc","vx","va","px","pa"].forEach(id=>{const e=$(id);try{const v=(S.inputs||{})[id];if(v!=null)e.value=v}catch(_){}
+  e.addEventListener("input",()=>{S.inputs=S.inputs||{};S.inputs[id]=e.value;save();if(S.mission===5)buildReport()})});
+["c1","c2"].forEach(id=>{const e=$(id);const v=(S.inputs||{})[id];if(v)e.value=v;e.addEventListener("change",()=>{S.inputs=S.inputs||{};S.inputs[id]=e.value;save()})});
+function buildReport(){const I=S.inputs||{},P=M().P,u=M().u,u2=M().u2;
+  const tab=pts=>[...pts].filter(p=>!p.ex).sort((a,b)=>a.x-b.x).map(p=>`  x = ${fmt(p.x)} → A = ${fmt(area(p.x,pts===S.pts.pared?"pared":"libre"))}`).join("\n")||"  (sin registros)";
+  const st=v=>v==="no"?"No estoy de acuerdo":v==="si"?"Estoy de acuerdo":"(sin postura)";
+  $("report").textContent=
+`LABORATORIO DEL MURAL · 5.° de secundaria
+Equipo: ${I.team||"(sin nombres)"}
+Material: ${M().name}
+
+MISIÓN 1 · EXPLORA
+Medidas registradas (4 lados):
+${tab(S.pts.libre)}
+Forma de los puntos: ${I["m1-q1"]||"—"}
+Mayor área según la tabla: ${I["m1-q2"]||"—"}
+
+MISIÓN 2 · MODELA
+Regla propuesta: A(x) = ${I.ca||"a"}x² + ${I.cb||"b"}x + ${I.cc||"0"}
+Vértice propuesto: (${I.vx||"—"} ; ${I.va||"—"}) ${S.done.v?"✓ verificado":""}
+Pistas usadas: ${S.hints} de 3
+
+MISIÓN 3 · ARGUMENTA
+Mateo («si el ancho aumenta, el área siempre aumenta»): ${st(I.c1)}
+  ${I.c1t||"—"}
+Lucía («mismo borde, misma área»): ${st(I.c2)}
+  ${I.c2t||"—"}
+
+MISIÓN 4 · CONTRA LA PARED
+Medidas registradas (3 lados):
+${tab(S.pts.pared)}
+Vértice propuesto: (${I.px||"—"} ; ${I.pa||"—"}) ${S.done.p?"✓ verificado":""}
+¿Por qué ya no es un cuadrado? ${I["m4-q"]||"—"}
+
+METACOGNICIÓN: ${I.meta||"—"}`}
+$("copy").onclick=async()=>{buildReport();const t=$("report").textContent;try{await navigator.clipboard.writeText(t);$("copy-msg").textContent="Informe copiado. Pégalo en el grupo de clase."}catch(e){const r=document.createRange();r.selectNodeContents($("report"));const s=getSelection();s.removeAllRanges();s.addRange(r);$("copy-msg").textContent="Texto seleccionado: usa Copiar de tu teléfono o Ctrl+C."}};
+if(S.rule){rule=Object.assign({},S.rule);const pts=S.pts.libre;const tol=M().P*M().P/16*0.02+0.01;rule.ok=pts.length>0&&pts.every(p=>Math.abs(rule.a*p.x*p.x+rule.b*p.x+rule.c-area(p.x,"libre"))<=tol)}
+render();
+})();
+</script>
+
+</body></html>
