@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Del trinomio a la ecuación</title>
+<style>
+:root{
+  --bg:#0e151e;--card:#17212c;--card2:#1e2a37;--fg:#f3f6f9;--muted:#a7b5c3;--line:#2c3a49;
+  --accent:#5cb8ff;--root:#ffb02e;--good:#5fd38a;--bad:#ff6b6b;--grid:#233040;--axis:#cfd9e3;
+  --tile-sq:#3f86d1;--tile-x:#46a96a;--tile-u:#e3bd3b;--curve2:#c792ea;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff;--card:#f1f4f8;--card2:#e6ecf2;--fg:#0f1923;--muted:#4a5a6a;--line:#cfd8e2;
+  --accent:#0a5fbf;--root:#d4490b;--good:#1d8a4b;--bad:#c62828;--grid:#e0e6ed;--axis:#22313f;
+  --tile-sq:#8dbdee;--tile-x:#93d4a6;--tile-u:#f4d86e;--curve2:#7b3fb0;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+body{font-size:clamp(15px,1.65vw,26px);line-height:1.35}
+.deck{height:100vh;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;gap:.5em;padding:.3em .8em;font-size:.62em;color:var(--muted);border-bottom:1px solid var(--line)}
+.bar .t{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button{font:inherit;color:var(--fg);background:var(--card2);border:1px solid var(--line);border-radius:.45em;padding:.28em .7em;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
+button.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+main{flex:1;position:relative;overflow:hidden}
+.slide{position:absolute;inset:0;padding:.7em 1.2em;display:none;overflow:auto}
+.slide.active{display:flex;flex-direction:column}
+h1{font-size:2.3em;margin:.1em 0 .2em;line-height:1.1}
+h2{font-size:1.35em;margin:0 0 .35em;color:var(--accent)}
+h3{font-size:1.02em;margin:.15em 0 .3em}
+p{margin:.22em 0}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:.9em;flex:1;min-height:0}
+@media (max-width:820px){.cols{grid-template-columns:1fr}.plot,.board{min-height:300px}}
+.stack{display:flex;flex-direction:column;gap:.45em;min-height:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:.6em;padding:.5em .75em}
+.plot{width:100%;flex:1;min-height:240px;display:block;background:var(--card);border:1px solid var(--line);border-radius:.6em}
+.board{width:100%;flex:1;min-height:260px;display:block;background:var(--card);border:1px solid var(--line);border-radius:.6em;touch-action:none;user-select:none}
+.m{font-family:"Cambria Math","STIX Two Math","Times New Roman",serif;font-size:1.12em;white-space:nowrap}
+.big{font-size:1.45em}
+.muted{color:var(--muted)}
+.good{color:var(--good);font-weight:600}
+.bad{color:var(--bad);font-weight:600}
+.rootc{color:var(--root);font-weight:700}
+.sol{display:none}
+.sol.show{display:block}
+.grid4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7em}
+.ctrl{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5em;margin:.2em 0}
+.ctrl input[type=range]{width:100%;accent-color:var(--accent);height:1.4em}
+.ctrl output{min-width:2.4em;text-align:right;font-weight:700}
+.row{display:flex;flex-wrap:wrap;gap:.35em;align-items:center}
+.chip{display:inline-block;padding:.1em .55em;border-radius:1em;background:var(--card2);border:1px solid var(--line);margin:.1em}
+input[type=number],input[type=text]{font:inherit;width:4em;background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:.35em;padding:.15em .3em}
+.legend{font-size:.7em;color:var(--muted)}
+footer{display:flex;align-items:center;justify-content:space-between;gap:.5em;padding:.3em .8em;border-top:1px solid var(--line);font-size:.7em}
+.dots{display:flex;gap:.35em;flex-wrap:wrap;justify-content:center}
+.dots span{width:.75em;height:.75em;border-radius:50%;background:var(--line);cursor:pointer}
+.dots span.on{background:var(--accent)}
+.center{display:flex;flex-direction:column;justify-content:center;flex:1}
+/* fichas */
+.pc{cursor:grab;transition:transform .55s ease}
+.pc.drag{transition:none;cursor:grabbing}
+.pc rect{stroke:var(--bg);stroke-width:.14}
+.pc.sq rect{fill:var(--tile-sq)} .pc.tx rect{fill:var(--tile-x)} .pc.un rect{fill:var(--tile-u)}
+.pc text,.lbl{font-weight:700;pointer-events:none;text-anchor:middle;dominant-baseline:central}
+.pc text{fill:#0b1220}
+.lbl{fill:var(--root)}
+.hole{fill:none;stroke:var(--root);stroke-width:.15;stroke-dasharray:.4 .3}
+@keyframes pop{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:scale(1)}}
+.popin{animation:pop .45s ease both;transform-box:fill-box;transform-origin:center}
+/* marcador */
+.score{position:fixed;right:.8em;top:2.4em;z-index:20;background:var(--card);border:1px solid var(--accent);border-radius:.6em;padding:.6em .7em;width:min(19em,92vw);font-size:.72em;box-shadow:0 8px 30px #0008}
+.score.hide{display:none}
+.trow{display:grid;grid-template-columns:1fr 2.2em auto auto;gap:.3em;align-items:center;margin:.25em 0}
+.trow input{width:100%}
+.trow b{text-align:center;font-size:1.3em;color:var(--root)}
+#aspaSvg{width:100%;height:auto;max-height:42vh;display:block}
+</style>
+</head>
+<body>
+<div class="deck">
+  <div class="bar">
+    <span class="t">Taller de Álgebra · 4.º de secundaria · Sesión 1: Del trinomio a la ecuación</span>
+    <button id="scoreBtn" title="Marcador de equipos">🏆 Puntos</button>
+    <button id="themeBtn" title="Cambiar tema">☀ / ☾</button>
+    <button id="fsBtn" title="Pantalla completa">⛶</button>
+  </div>
+
+  <div class="score hide" id="score">
+    <div class="row" style="justify-content:space-between"><b>Marcador</b><button id="scoreClose">✕</button></div>
+    <div id="scoreList"></div>
+    <div class="row" style="margin-top:.3em"><button id="tAdd">+ Equipo</button><button id="tReset">Reiniciar puntos</button></div>
+    <p class="muted" style="font-size:.85em">Toca el nombre para cambiarlo. Se guarda en este navegador.</p>
+  </div>
+
+  <main id="main">
+
+  <!-- PORTADA -->
+  <section class="slide" data-title="Portada">
+    <div class="center">
+      <p class="muted">Taller de Álgebra · 4.º de secundaria · 135 min</p>
+      <h1>Del trinomio<br>a la ecuación</h1>
+      <p class="big" style="margin-top:.6em">¿Qué rectángulo se esconde detrás de un trinomio?</p>
+      <p class="muted" style="margin-top:1.2em">Avanza con ← → o con los botones de abajo. 🏆 abre el marcador de equipos.</p>
+    </div>
+  </section>
+
+  <!-- ACTIVACION -->
+  <section class="slide" data-title="Activación">
+    <h2>1 · ¿De qué multiplicación vienen?</h2>
+    <div class="grid4">
+      <div class="card"><p class="m big">x² − 10x + 25</p><button data-rev="a1">Ver</button><p id="a1" class="sol m rootc">(x − 5)²</p></div>
+      <div class="card"><p class="m big">9x² − 16</p><button data-rev="a2">Ver</button><p id="a2" class="sol m rootc">(3x − 4)(3x + 4)</p></div>
+      <div class="card"><p class="m big">4x² + 12x + 9</p><button data-rev="a3">Ver</button><p id="a3" class="sol m rootc">(2x + 3)²</p></div>
+      <div class="card"><p class="m big">x² + 5x + 6</p><button data-rev="a4">Ver</button><p id="a4" class="sol">No es cuadrado perfecto ni diferencia de cuadrados.<br><b>¿Entonces no se puede escribir como producto?</b></p></div>
+    </div>
+  </section>
+
+  <!-- FICHAS ARRASTRABLES -->
+  <section class="slide" data-title="Arma el rectángulo">
+    <h2>2 · Arma el rectángulo (arrastra las fichas)</h2>
+    <div class="cols" style="grid-template-columns:minmax(0,.8fr) minmax(0,1.6fr)">
+      <div class="stack">
+        <div class="card">
+          <p class="m big" id="tileExpr"></p>
+          <div class="row">
+            <button data-tile="1,5,6">x² + 5x + 6</button><button data-tile="1,5,7">x² + 5x + 7</button>
+            <button data-tile="1,7,12">x² + 7x + 12</button><button data-tile="1,4,4">x² + 4x + 4</button>
+            <button data-tile="2,7,3">2x² + 7x + 3</button><button data-tile="2,5,2">2x² + 5x + 2</button>
+          </div>
+        </div>
+        <div class="card">
+          <p><b>Cómo se juega</b></p>
+          <p class="muted">Arrastra las piezas; se pegan solas a las demás. <b>Toca una tira</b> (sin moverla) para girarla.</p>
+          <div class="row" style="margin-top:.3em"><button id="tShuffle">Desordenar</button><button id="tSolve">Mostrar solución</button></div>
+        </div>
+        <div class="card"><p id="tileMsg"></p></div>
+      </div>
+      <svg class="board" id="tileSvg" viewBox="0 0 40 24" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </section>
+
+  <!-- x2+bx+c -->
+  <section class="slide" data-title="x² + bx + c">
+    <h2>3 · Trinomios x² + bx + c</h2>
+    <p>Dos números que <b>sumen b</b> y <b>multipliquen c</b>.</p>
+    <div class="grid4">
+      <div class="card"><p class="m big">x² + 7x + 12</p><button data-rev="b1">Ver</button><p id="b1" class="sol">3 + 4 = 7; 3 · 4 = 12 → <span class="m rootc">(x + 3)(x + 4)</span></p></div>
+      <div class="card"><p class="m big">x² + x − 6</p><button data-rev="b2">Ver</button><p id="b2" class="sol">3 + (−2) = 1; 3 · (−2) = −6 → <span class="m rootc">(x + 3)(x − 2)</span></p></div>
+      <div class="card"><p class="m big">x² − 8x + 15</p><button data-rev="b3">Ver</button><p id="b3" class="sol">(−3) + (−5) = −8; (−3)(−5) = 15 → <span class="m rootc">(x − 3)(x − 5)</span></p></div>
+      <div class="card"><h3>Regla de signos</h3><button data-rev="b4">Ver</button><div id="b4" class="sol"><p>c &gt; 0: mismo signo, el de b.</p><p>c &lt; 0: signos distintos; el mayor en valor absoluto lleva el signo de b.</p></div></div>
+    </div>
+  </section>
+
+  <!-- ASPA POR TANTEO -->
+  <section class="slide" data-title="Aspa simple">
+    <h2>4 · Aspa simple por tanteo</h2>
+    <div class="cols">
+      <div class="stack">
+        <div class="card">
+          <div class="row m">
+            <input type="number" id="aa" value="2"> x² +
+            <input type="number" id="ab" value="7"> x +
+            <input type="number" id="ac" value="3">
+          </div>
+          <div class="row" style="margin-top:.35em">
+            <span class="muted">Ejercicios:</span>
+            <button data-aspa="2,7,3">Modelo</button><button data-aspa="2,5,2">1</button><button data-aspa="3,7,2">2</button><button data-aspa="5,13,-6">3</button><button data-aspa="6,-11,4">4</button><button data-aspa="10,1,-3">5</button><button data-aspa="2,3,4">¿?</button>
+          </div>
+        </div>
+        <div class="card">
+          <p><b>1.</b> Descompón el primer término <span class="m" id="aLab"></span>:</p>
+          <div class="row" id="aPairs"></div>
+          <p style="margin-top:.35em"><b>2.</b> Descompón el término independiente <span class="m" id="cLab"></span>:</p>
+          <div class="row" id="cPairs"></div>
+          <div class="row" style="margin-top:.35em"><button id="swapRS">⇄ Invertir</button><button id="aspaAns">Mostrar respuesta</button><span class="muted" id="aspaTries"></span></div>
+        </div>
+        <div class="card" id="aspaMsg"></div>
+      </div>
+      <div class="stack">
+        <div class="card"><svg id="aspaSvg" viewBox="0 0 560 190"></svg></div>
+        <canvas class="plot" id="aspaCv"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- VALORES DE K -->
+  <section class="slide" data-title="¿Cuándo es factorizable?">
+    <h2>5 · ¿Para qué enteros k se factoriza x² + kx + 12?</h2>
+    <div class="cols">
+      <div class="stack">
+        <div class="card">
+          <p class="m big" id="kExpr"></p>
+          <div class="ctrl"><span>k</span><input type="range" id="kk" min="-15" max="15" value="0"><output id="kko">0</output></div>
+          <p id="kMsg"></p>
+        </div>
+        <div class="card"><h3>Valores encontrados (<span id="kN">0</span>/6)</h3><p id="kFound" class="muted">Mueve k y busca…</p></div>
+        <div class="card"><button data-rev="kq">¿Y si no se puede factorizar?</button><p id="kq" class="sol">¡Igual puede tener solución! La gráfica a veces corta el eje en puntos que <b>no son enteros</b>. Lo resolvemos más adelante.</p></div>
+      </div>
+      <canvas class="plot" id="kCv"></canvas>
+    </div>
+  </section>
+
+  <!-- PRODUCTO NULO -->
+  <section class="slide" data-title="Producto nulo">
+    <h2>6 · Cuando el trinomio vale cero</h2>
+    <div class="cols">
+      <div class="stack">
+        <div class="card"><p><b>Si A · B = 0, entonces A = 0 o B = 0.</b></p></div>
+        <div class="card">
+          <p>Un rectángulo mide 3 m más de largo que de ancho y su área es 40 m². ¿Cuánto mide?</p>
+          <div class="row" style="margin:.3em 0">Ancho <input type="number" id="pnW"> m · Largo <input type="number" id="pnL"> m <button id="pnCheck">Comprobar</button></div>
+          <p id="pnFb"></p>
+          <button id="pnStep">Ver paso a paso</button>
+          <ol id="pnSteps" style="margin:.3em 0 0 1.1em;padding:0"></ol>
+        </div>
+      </div>
+      <canvas class="plot" id="pnCv"></canvas>
+    </div>
+  </section>
+
+  <!-- COMPLETAR CON FICHAS -->
+  <section class="slide" data-title="Completar con fichas">
+    <h2>7 · ¿Y si no se puede factorizar? ¡Completamos el cuadrado!</h2>
+    <div class="cols" style="grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)">
+      <div class="stack">
+        <div class="card">
+          <p class="m big" id="ccfExpr"></p>
+          <div class="ctrl"><span>b</span><input type="range" id="ccfB" min="2" max="10" step="2" value="4"><output id="ccfBo">4</output></div>
+          <p class="muted">Partimos las b tiras en dos mitades iguales y las ponemos a cada lado del cuadrado.</p>
+        </div>
+        <div class="card">
+          <p><b>¿Cuántas unidades faltan para cerrar el cuadrado?</b></p>
+          <div class="row"><input type="number" id="ccfIn"><button id="ccfCheck">Comprobar</button><button class="primary" id="ccfFill">Completar</button></div>
+          <p id="ccfFb"></p>
+        </div>
+        <div class="card sol" id="ccfRule"><p>Para completar <span class="m">x² + bx</span> se suma <span class="m rootc">(b/2)²</span>:</p><p class="m" id="ccfId"></p></div>
+      </div>
+      <svg class="board" id="ccfSvg" viewBox="0 0 18 18" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </section>
+
+  <!-- COMPLETAR CUADRADO ALGEBRA -->
+  <section class="slide" data-title="Completar el cuadrado">
+    <h2>8 · Resolver completando el cuadrado</h2>
+    <div class="cols">
+      <div class="stack">
+        <div class="card">
+          <p class="m big">x² + 4x − 1 = 0</p>
+          <button id="ccStep">Siguiente paso</button>
+          <ol id="ccSteps" style="margin:.3em 0 0 1.1em;padding:0"></ol>
+        </div>
+        <div class="card"><button data-rev="fg">Fórmula general</button>
+          <div id="fg" class="sol"><p class="m big">x = (−b ± √(b² − 4ac)) / 2a</p><p class="muted">Sale de repetir los mismos pasos con ax² + bx + c = 0.</p></div></div>
+      </div>
+      <canvas class="plot" id="ccCv"></canvas>
+    </div>
+  </section>
+
+  <!-- DISCRIMINANTE -->
+  <section class="slide" data-title="Explorador del discriminante">
+    <h2>9 · Explorador: el discriminante b² − 4ac</h2>
+    <div class="cols">
+      <div class="stack">
+        <div class="card">
+          <p class="m big" id="dExpr"></p>
+          <div class="ctrl"><span>a</span><input type="range" id="da" min="-3" max="3" value="1"><output id="dao">1</output></div>
+          <div class="ctrl"><span>b</span><input type="range" id="db" min="-12" max="12" value="7"><output id="dbo">7</output></div>
+          <div class="ctrl"><span>c</span><input type="range" id="dc" min="-20" max="20" value="12"><output id="dco">12</output></div>
+          <div class="row"><button data-d="1,7,12">x² + 7x + 12</button><button data-d="2,7,3">2x² + 7x + 3</button><button data-d="1,4,-1">x² + 4x − 1</button><button data-d="2,3,4">2x² + 3x + 4</button></div>
+        </div>
+        <div class="card"><p><b>Predice antes de mover:</b> ¿cuántos cortes tendrá? <button data-pred="2">2</button> <button data-pred="1">1</button> <button data-pred="0">0</button> <span id="predFb"></span></p></div>
+        <div class="card" id="dOut"></div>
+        <div class="card"><button data-rev="dc1">Conclusión</button><p id="dc1" class="sol">Con coeficientes enteros, el trinomio se factoriza con enteros <b>cuando b² − 4ac es un cuadrado perfecto</b>. Si b² − 4ac &lt; 0, la parábola <b>no corta</b> el eje x.</p></div>
+      </div>
+      <canvas class="plot" id="dCv"></canvas>
+    </div>
+  </section>
+
+  <!-- JUEGO DONDE CORTA -->
+  <section class="slide" data-title="¿Dónde corta?">
+    <h2>10 · Juego: ¿dónde corta el eje x?</h2>
+    <div class="cols">
+      <div class="stack">
+        <div class="card">
+          <div class="row"><span class="muted">Nivel:</span><button data-lvl="1" class="on">1 · a = 1</button><button data-lvl="2">2 · a = 2</button></div>
+          <p class="m big" id="gExpr" style="margin-top:.3em"></p>
+          <p class="muted">Factoriza mentalmente y <b>toca el eje x</b> en la gráfica donde creas que corta (toca de nuevo para quitar).</p>
+          <div class="row" style="margin-top:.3em"><button class="primary" id="gCheck">Comprobar</button><button id="gNew">Nueva ecuación</button></div>
+        </div>
+        <div class="card"><p id="gFb" class="big"></p><p id="gSol" class="muted"></p></div>
+        <div class="card"><p>Aciertos de la clase: <b class="rootc" id="gScore">0 / 0</b></p></div>
+      </div>
+      <canvas class="plot" id="gCv" style="cursor:crosshair"></canvas>
+    </div>
+  </section>
+
+  <!-- RETOS -->
+  <section class="slide" data-title="Retos">
+    <h2>11 · Retos tipo concurso</h2>
+    <div class="row" id="rTabs" style="margin-bottom:.45em"></div>
+    <div class="cols">
+      <div class="stack">
+        <div class="card"><p id="rQ"></p><div id="rExtra"></div>
+          <div class="row" style="margin-top:.4em"><button class="primary" id="rSolBtn">Ver solución</button><span class="muted">Equipo que acierta → 🏆 +1</span></div></div>
+        <div class="card sol" id="rSol"></div>
+      </div>
+      <div class="stack">
+        <canvas class="plot" id="rCv"></canvas>
+        <p class="legend" id="rLeg"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SALIDA -->
+  <section class="slide" data-title="Ficha de salida y puente">
+    <h2>12 · Ficha de salida</h2>
+    <div class="cols">
+      <div class="stack">
+        <div class="card"><p><b>1.</b> Resuelve factorizando: <span class="m">3x² − 5x − 2 = 0</span></p><button data-rev="s1">Ver</button><p id="s1" class="sol m rootc">(3x + 1)(x − 2) = 0 → x = 2 o x = −1/3</p></div>
+        <div class="card"><p><b>2.</b> Completando el cuadrado: <span class="m">x² − 4x + 1 = 0</span></p><button data-rev="s2">Ver</button><p id="s2" class="sol m rootc">(x − 2)² = 3 → x = 2 ± √3</p></div>
+        <div class="card"><p><b>3.</b> ¿Se factoriza <span class="m">2x² + 5x + 4</span> con enteros?</p><button data-rev="s3">Ver</button><p id="s3" class="sol">b² − 4ac = 25 − 32 = −7 &lt; 0 → <span class="bad">no</span> (ni siquiera corta el eje x).</p></div>
+        <div class="card"><p><b>Próxima sesión:</b> ¿dónde se cruzan una parábola y una recta? Mueve la recta:</p>
+          <div class="ctrl"><span>y = x +</span><input type="range" id="sK" min="-5" max="3" value="-1"><output id="sKo">−1</output></div><p id="sMsg" class="muted"></p></div>
+      </div>
+      <canvas class="plot" id="sCv"></canvas>
+    </div>
+  </section>
+
+  </main>
+  <footer>
+    <button id="prev">← Anterior</button>
+    <div class="dots" id="dots"></div>
+    <span id="count" class="muted"></span>
+    <button id="next" class="primary">Siguiente →</button>
+  </footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const MINUS = '−';
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const NS = 'http://www.w3.org/2000/svg';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ================= formato ================= */
+const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; };
+function fmtNum(n) {
+  if (Math.abs(n) < 1e-9) n = 0;
+  if (Number.isInteger(n)) return (n < 0 ? MINUS : '') + Math.abs(n);
+  const s = Math.abs(n).toFixed(2).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
+  return (n < 0 ? MINUS : '') + s;
+}
+function frac(n, d) {
+  if (d < 0) { n = -n; d = -d; }
+  const g = gcd(n, d) || 1; n /= g; d /= g;
+  return d === 1 ? fmtNum(n) : (n < 0 ? MINUS : '') + Math.abs(n) + '/' + d;
+}
+function term(coef, v, first) {
+  if (coef === 0) return '';
+  const a = Math.abs(coef);
+  const sign = coef < 0 ? (first ? MINUS : ' ' + MINUS + ' ') : (first ? '' : ' + ');
+  return sign + ((v && a === 1) ? '' : a) + v;
+}
+function poly(a, b, c, x = 'x') { let s = term(a, x + '²', true); s += term(b, x, s === ''); s += term(c, '', s === ''); return s || '0'; }
+function lin(p, r) { let s = term(p, 'x', true); s += term(r, '', s === ''); return s || '0'; }
+const sgn = n => (n < 0 ? MINUS : '+') + Math.abs(n);
+
+/* ================= factorización ================= */
+function factorQuad(a, b, c) {
+  let g = gcd(gcd(a, b), c) || 1; if (a < 0) g = -g;
+  const A = a / g, B = b / g, C = c / g;
+  if (C === 0) return { g, p: 1, r: 0, q: A, s: B };
+  for (let p = A; p >= 1; p--) {
+    if (A % p) continue; const q = A / p;
+    for (let r = -Math.abs(C); r <= Math.abs(C); r++) {
+      if (r === 0 || C % r) continue; const s = C / r;
+      if (p * s + q * r === B) return { g, p, q, r, s };
+    }
+  }
+  return null;
+}
+function factorStr(F) {
+  const pre = F.g === 1 ? '' : (F.g === -1 ? MINUS : fmtNum(F.g));
+  let f1 = lin(F.p, F.r), f2 = lin(F.q, F.s);
+  if (f1 === f2) return pre + '(' + f1 + ')²';
+  const w1 = F.r === 0 ? f1 : '(' + f1 + ')', w2 = F.s === 0 ? f2 : '(' + f2 + ')';
+  return pre + w1 + w2;
+}
+function sqrtParts(D) { let k = 1, m = D; for (let i = 2; i * i <= m; i++) while (m % (i * i) === 0) { m /= i * i; k *= i; } return [k, m]; }
+function exactRoots(a, b, c) {
+  const D = b * b - 4 * a * c;
+  if (D < 0) return { D, list: [], labels: [], text: 'No tiene soluciones reales' };
+  const r = Math.round(Math.sqrt(D));
+  if (r * r === D) {
+    const cand = [[-b - r, 2 * a], [-b + r, 2 * a]].map(([n, d]) => ({ v: n / d, l: frac(n, d) }));
+    const uniq = []; cand.forEach(o => { if (!uniq.some(u => Math.abs(u.v - o.v) < 1e-9)) uniq.push(o); });
+    uniq.sort((p, q) => p.v - q.v);
+    return { D, list: uniq.map(u => u.v), labels: uniq.map(u => u.l), text: uniq.map(u => 'x = ' + u.l).join('   ·   ') };
+  }
+  const [k, m] = sqrtParts(D);
+  const g = gcd(gcd(Math.abs(b), k), Math.abs(2 * a)); let Bn = -b / g, K = k / g, Dd = 2 * a / g;
+  if (Dd < 0) { Bn = -Bn; Dd = -Dd; }
+  const rad = (K === 1 ? '' : K) + '√' + m;
+  const num = (Bn === 0 ? '±' : fmtNum(Bn) + ' ± ') + rad;
+  const exact = Dd === 1 ? num : '(' + num + ')/' + Dd;
+  const xs = [(-b - Math.sqrt(D)) / (2 * a), (-b + Math.sqrt(D)) / (2 * a)].sort((p, q) => p - q);
+  const r2 = x => fmtNum(Math.round(x * 100) / 100);
+  return { D, list: xs, labels: xs.map(x => '≈ ' + r2(x)), text: 'x = ' + exact + '   (≈ ' + xs.map(r2).join(' y ') + ')' };
+}
+
+/* ================= graficador ================= */
+function niceStep(raw) { const p = Math.pow(10, Math.floor(Math.log10(raw))); const m = raw / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
+const plots = [];
+class Plot {
+  constructor(cv) { this.cv = cv; this.g = cv.getContext('2d'); this.spec = null; this.map = null; new ResizeObserver(() => this.draw()).observe(cv); plots.push(this); }
+  set(spec) { this.spec = spec; this.draw(); }
+  xAt(clientX) { if (!this.map) return null; const R = this.cv.getBoundingClientRect(); const { xmin, xmax, pad, W } = this.map; return xmin + (clientX - R.left - pad) / (W - 2 * pad) * (xmax - xmin); }
+  draw() {
+    const cv = this.cv, s = this.spec, R = cv.getBoundingClientRect();
+    if (R.width < 20 || R.height < 20) return;
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(R.width * dpr); cv.height = Math.round(R.height * dpr);
+    const g = this.g; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const W = R.width, H = R.height; g.clearRect(0, 0, W, H);
+    if (!s) return;
+    if (s.empty) { g.fillStyle = css('--muted'); g.font = Math.max(14, W / 32) + 'px system-ui,sans-serif'; g.textAlign = 'center'; g.fillText(s.empty, W / 2, H / 2); this.map = null; return; }
+    const { xmin, xmax, ymin, ymax } = s, pad = 10;
+    this.map = { xmin, xmax, pad, W };
+    const X = x => pad + (x - xmin) / (xmax - xmin) * (W - 2 * pad);
+    const Y = y => H - pad - (y - ymin) / (ymax - ymin) * (H - 2 * pad);
+    const fs = Math.max(12, Math.min(19, W / 42));
+    g.font = fs + 'px system-ui,sans-serif';
+    const sx = s.xStep || niceStep((xmax - xmin) / Math.max(4, W / 75)), sy = niceStep((ymax - ymin) / Math.max(4, H / 55));
+    g.strokeStyle = css('--grid'); g.lineWidth = 1;
+    for (let i = Math.ceil(xmin / sx); i * sx <= xmax; i++) { const x = X(i * sx); g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+    for (let i = Math.ceil(ymin / sy); i * sy <= ymax; i++) { const y = Y(i * sy); g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    g.strokeStyle = css('--axis'); g.lineWidth = 2;
+    const y0 = Math.min(Math.max(Y(0), 0), H), x0 = Math.min(Math.max(X(0), 0), W);
+    g.beginPath(); g.moveTo(0, y0); g.lineTo(W, y0); g.stroke();
+    g.beginPath(); g.moveTo(x0, 0); g.lineTo(x0, H); g.stroke();
+    g.fillStyle = css('--muted'); g.textAlign = 'center'; g.textBaseline = 'top';
+    for (let i = Math.ceil(xmin / sx); i * sx <= xmax; i++) { if (i === 0) continue; const v = +(i * sx).toFixed(6); g.fillText(fmtNum(v), X(v), Math.min(y0 + 4, H - fs - 2)); }
+    g.textAlign = 'right'; g.textBaseline = 'middle';
+    for (let i = Math.ceil(ymin / sy); i * sy <= ymax; i++) { if (i === 0) continue; const v = +(i * sy).toFixed(6); const xx = x0 - 5 < 30 ? x0 + 5 + g.measureText(fmtNum(v)).width : x0 - 5; g.fillText(fmtNum(v), xx, Y(v)); }
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    if (s.xName) { g.fillStyle = css('--muted'); g.fillText(s.xName, W - pad - g.measureText(s.xName).width, Math.max(y0 - 8, fs)); }
+    if (s.yName) { g.fillStyle = css('--muted'); g.fillText(s.yName, Math.min(x0 + 8, W - 60), fs + 4); }
+    for (const fn of s.fns || []) {
+      g.strokeStyle = css(fn.color || '--accent'); g.lineWidth = 3.5; g.beginPath(); let on = false;
+      const N = Math.ceil(W);
+      for (let i = 0; i <= N; i++) {
+        const x = xmin + (i / N) * (xmax - xmin);
+        if (fn.dom && (x < fn.dom[0] - 1e-9 || x > fn.dom[1] + 1e-9)) { on = false; continue; }
+        const py = Y(fn.f(x));
+        if (!isFinite(py) || py < -3 * H || py > 4 * H) { on = false; continue; }
+        if (!on) { g.moveTo(X(x), py); on = true; } else g.lineTo(X(x), py);
+      }
+      g.stroke();
+    }
+    const pill = (txt, cx, cy, color) => {
+      g.font = 'bold ' + fs + 'px system-ui,sans-serif';
+      const w = g.measureText(txt).width + 12, h = fs + 8;
+      const bx = Math.min(Math.max(cx - w / 2, 2), W - w - 2), by = Math.min(Math.max(cy - h / 2, 2), H - h - 2);
+      g.fillStyle = css('--bg'); g.globalAlpha = .9; g.fillRect(bx, by, w, h); g.globalAlpha = 1;
+      g.strokeStyle = color; g.lineWidth = 1.5; g.strokeRect(bx, by, w, h);
+      g.fillStyle = color; g.textBaseline = 'middle'; g.fillText(txt, bx + 6, by + h / 2); g.textBaseline = 'alphabetic';
+      g.font = fs + 'px system-ui,sans-serif';
+    };
+    for (const pt of s.points || []) {
+      const px = X(pt.x), py = Y(pt.y); const col = css(pt.color || '--fg');
+      g.fillStyle = col; g.beginPath(); g.arc(px, py, 6, 0, 2 * Math.PI); g.fill();
+      if (pt.label) pill(pt.label, px, py + (pt.below ? fs + 6 : -(fs + 6)), col);
+    }
+    (s.roots || []).forEach((rt, i) => {
+      const px = X(rt.x), py = Y(0); const col = css(rt.bad ? '--bad' : '--root');
+      g.fillStyle = col; g.beginPath(); g.arc(px, py, 8, 0, 2 * Math.PI); g.fill();
+      g.strokeStyle = css('--bg'); g.lineWidth = 2; g.stroke();
+      if (rt.label) pill(rt.label, px, py + (i % 2 === 0 ? -(fs + 12) : fs + 12), col);
+    });
+    (s.marks || []).forEach(mk => {
+      const px = X(mk.x), py = Y(0); const col = css(mk.color || '--accent');
+      g.fillStyle = col; g.beginPath(); g.moveTo(px, py - 4); g.lineTo(px - 10, py - 22); g.lineTo(px + 10, py - 22); g.closePath(); g.fill();
+      if (mk.label) pill(mk.label, px, py - 22 - fs, col);
+    });
+  }
+}
+function quadSpec(a, b, c, o = {}) {
+  const f = x => a * x * x + b * x + c, xv = -b / (2 * a), yv = c - b * b / (4 * a);
+  const ex = exactRoots(a, b, c);
+  const xs = [xv, ...ex.list]; const lo = Math.min(...xs), hi = Math.max(...xs); const span = Math.max(hi - lo, 3);
+  const mag = Math.max(Math.abs(yv), 3);
+  let ymin, ymax;
+  if (a > 0) { ymin = Math.min(0, yv) - .25 * mag; ymax = Math.max(0, yv) + 1.2 * mag; }
+  else { ymax = Math.max(0, yv) + .25 * mag; ymin = Math.min(0, yv) - 1.2 * mag; }
+  const roots = ex.list.map((x, i) => ({ x, label: o.rootLabels ? o.rootLabels[i] : (ex.labels[i].startsWith('≈') ? 'x ' + ex.labels[i] : 'x = ' + ex.labels[i]), bad: o.bad && o.bad[i] }));
+  const points = o.vertex ? [{ x: xv, y: yv, label: 'V(' + fmtNum(Math.round(xv * 100) / 100) + '; ' + fmtNum(Math.round(yv * 100) / 100) + ')', below: a > 0 }] : [];
+  return { xmin: o.xmin ?? lo - span * .45 - 1.5, xmax: o.xmax ?? hi + span * .45 + 1.5, ymin: o.ymin ?? ymin, ymax: o.ymax ?? ymax, fns: [{ f, dom: o.dom }], roots, points, xName: o.xName, yName: o.yName };
+}
+
+/* ================= navegación ================= */
+const slides = $$('.slide'); let cur = 0;
+const dots = $('#dots');
+slides.forEach((s, i) => { const d = document.createElement('span'); d.title = s.dataset.title; d.onclick = () => go(i); dots.appendChild(d); });
+function go(i) {
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, j) => s.classList.toggle('active', j === cur));
+  [...dots.children].forEach((d, j) => d.classList.toggle('on', j === cur));
+  $('#count').textContent = (cur + 1) + ' / ' + slides.length;
+  requestAnimationFrame(() => plots.forEach(p => p.draw()));
+}
+$('#prev').onclick = () => go(cur - 1);
+$('#next').onclick = () => go(cur + 1);
+document.addEventListener('keydown', e => {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(cur + 1); }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(cur - 1); }
+});
+$('#themeBtn').onclick = () => {
+  const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem('tema', r.dataset.theme); } catch (e) { }
+  plots.forEach(p => p.draw());
+};
+try { const t = localStorage.getItem('tema'); if (t) document.documentElement.dataset.theme = t; } catch (e) { }
+$('#fsBtn').onclick = () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); };
+document.addEventListener('click', e => { const b = e.target.closest('[data-rev]'); if (b) $('#' + b.dataset.rev).classList.toggle('show'); });
+
+/* ================= marcador ================= */
+let teams = null;
+try { teams = JSON.parse(localStorage.getItem('equipos')); } catch (e) { }
+if (!Array.isArray(teams)) teams = [1, 2, 3, 4].map(i => ({ n: 'Equipo ' + i, p: 0 }));
+const saveT = () => { try { localStorage.setItem('equipos', JSON.stringify(teams)); } catch (e) { } };
+function renderT() {
+  $('#scoreList').innerHTML = teams.map((t, i) => `<div class="trow"><input type="text" value="${esc(t.n)}" data-ti="${i}"><b>${t.p}</b><button data-tp="${i},1">+1</button><button data-tp="${i},-1">−1</button></div>`).join('');
+}
+$('#scoreList').addEventListener('input', e => { const i = e.target.dataset.ti; if (i !== undefined) { teams[i].n = e.target.value; saveT(); } });
+$('#scoreList').addEventListener('click', e => { const b = e.target.closest('[data-tp]'); if (!b) return; const [i, d] = b.dataset.tp.split(',').map(Number); teams[i].p += d; saveT(); renderT(); });
+$('#tAdd').onclick = () => { teams.push({ n: 'Equipo ' + (teams.length + 1), p: 0 }); saveT(); renderT(); };
+$('#tReset').onclick = () => { if (confirm('¿Poner todos los puntos en cero?')) { teams.forEach(t => t.p = 0); saveT(); renderT(); } };
+$('#scoreBtn').onclick = () => $('#score').classList.toggle('hide');
+$('#scoreClose').onclick = () => $('#score').classList.add('hide');
+renderT();
+
+/* ================= fichas arrastrables ================= */
+const TX = 6.5, TU = 1.5, BW = 40, BH = 24;
+const tSvg = $('#tileSvg');
+let tP = [], tExpr = [1, 5, 6], drag = null, tOver = null;
+function svgPt(svg, e) { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
+function tNew(a, b, c) {
+  tExpr = [a, b, c]; tP = [];
+  for (let i = 0; i < a; i++) tP.push({ t: 'sq', w: TX, h: TX });
+  for (let i = 0; i < b; i++) tP.push({ t: 'x', w: TU, h: TX });
+  for (let i = 0; i < c; i++) tP.push({ t: 'u', w: TU, h: TU });
+  $('#tileExpr').textContent = poly(a, b, c);
+  tBuild(); tScatter();
+}
+function tScatter() {
+  const [a, b] = tExpr; let iS = 0, iX = 0, iU = 0;
+  const x0 = 1 + a * (TX + .8) + .4;
+  tP.forEach(p => {
+    if (p.t === 'sq') { p.x = 1 + iS * (TX + .8); p.y = 1; iS++; }
+    else if (p.t === 'x') { p.w = TU; p.h = TX; p.x = x0 + iX * (TU + .6); p.y = 1; iX++; }
+    else { p.x = 1 + (iU % 14) * (TU + .6); p.y = 1 + TX + 1.6 + Math.floor(iU / 14) * (TU + .6); iU++; }
+    tPos(p);
+  });
+  tCheck();
+}
+function tBuild() {
+  tSvg.innerHTML = '';
+  tP.forEach((p, i) => {
+    const g = document.createElementNS(NS, 'g'); g.classList.add('pc', p.t === 'sq' ? 'sq' : p.t === 'x' ? 'tx' : 'un'); g.dataset.i = i;
+    const r = document.createElementNS(NS, 'rect'); const t = document.createElementNS(NS, 'text');
+    t.textContent = p.t === 'sq' ? 'x²' : p.t === 'x' ? 'x' : '1';
+    t.setAttribute('font-size', p.t === 'sq' ? 2.4 : p.t === 'x' ? 1.1 : .9);
+    g.append(r, t); tSvg.appendChild(g); p.el = g; p.r = r; p.tx = t;
+  });
+  tOver = document.createElementNS(NS, 'g'); tOver.style.pointerEvents = 'none'; tSvg.appendChild(tOver);
+}
+function tPos(p) {
+  p.el.style.transform = `translate(${p.x}px,${p.y}px)`;
+  p.r.setAttribute('width', p.w); p.r.setAttribute('height', p.h);
+  p.tx.setAttribute('x', p.w / 2); p.tx.setAttribute('y', p.h / 2);
+}
+function tSnap(p) {
+  const th = .9; let bx = null, dx = th, by = null, dy = th;
+  for (const o of tP) {
+    if (o === p) continue;
+    for (const cx of [o.x, o.x + o.w, o.x - p.w, o.x + o.w - p.w]) { const d = Math.abs(p.x - cx); if (d < dx) { dx = d; bx = cx; } }
+    for (const cy of [o.y, o.y + o.h, o.y - p.h, o.y + o.h - p.h]) { const d = Math.abs(p.y - cy); if (d < dy) { dy = d; by = cy; } }
+  }
+  if (bx !== null) p.x = bx; if (by !== null) p.y = by;
+  p.x = Math.min(Math.max(p.x, 0), BW - p.w); p.y = Math.min(Math.max(p.y, 0), BH - p.h);
+}
+function dec(L) { for (let i = 0; i <= 4; i++) for (let j = 0; j <= 30; j++) if (Math.abs(i * TX + j * TU - L) < .06) return [i, j]; return null; }
+function tCheck() {
+  tOver.innerHTML = '';
+  const eps = .06;
+  for (let i = 0; i < tP.length; i++) for (let j = i + 1; j < tP.length; j++) {
+    const a = tP[i], b = tP[j];
+    const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x), oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    if (ox > eps && oy > eps) { $('#tileMsg').innerHTML = '<span class="bad">Hay piezas encimadas.</span>'; return; }
+  }
+  const x1 = Math.min(...tP.map(p => p.x)), y1 = Math.min(...tP.map(p => p.y)), x2 = Math.max(...tP.map(p => p.x + p.w)), y2 = Math.max(...tP.map(p => p.y + p.h));
+  const area = tP.reduce((s, p) => s + p.w * p.h, 0);
+  if (Math.abs((x2 - x1) * (y2 - y1) - area) < .1) {
+    const dw = dec(x2 - x1), dh = dec(y2 - y1);
+    const sw = dw ? lin(dw[0], dw[1]) : '?', sh = dh ? lin(dh[0], dh[1]) : '?';
+    tOver.innerHTML = `<rect x="${x1}" y="${y1}" width="${x2 - x1}" height="${y2 - y1}" fill="none" stroke="var(--root)" stroke-width=".25"/>` +
+      `<text class="lbl" x="${(x1 + x2) / 2}" y="${Math.max(y1 - .9, .7)}" font-size="1.3">${sw}</text>` +
+      `<text class="lbl" x="${Math.max(x1 - 1, .8)}" y="${(y1 + y2) / 2}" font-size="1.3" transform="rotate(-90 ${Math.max(x1 - 1, .8)} ${(y1 + y2) / 2})">${sh}</text>`;
+    const fac = sw === sh ? '(' + sw + ')²' : '(' + sw + ')(' + sh + ')';
+    $('#tileMsg').innerHTML = '<span class="good">¡Rectángulo! 🎉</span> Lados <span class="m">' + sw + '</span> y <span class="m">' + sh + '</span><br><span class="m rootc">' + poly(...tExpr) + ' = ' + fac + '</span>';
+  } else {
+    $('#tileMsg').innerHTML = '<span class="muted">Aún no es un rectángulo: hay huecos o piezas sueltas.</span>';
+  }
+}
+tSvg.addEventListener('pointerdown', e => {
+  const g = e.target.closest('.pc'); if (!g) return;
+  const p = tP[+g.dataset.i]; const pt = svgPt(tSvg, e);
+  drag = { p, dx: pt.x - p.x, dy: pt.y - p.y, sx: pt.x, sy: pt.y, moved: false };
+  g.classList.add('drag'); tSvg.insertBefore(g, tOver); g.setPointerCapture(e.pointerId); e.preventDefault();
+});
+tSvg.addEventListener('pointermove', e => {
+  if (!drag) return; const pt = svgPt(tSvg, e);
+  if (Math.hypot(pt.x - drag.sx, pt.y - drag.sy) > .35) drag.moved = true;
+  drag.p.x = pt.x - drag.dx; drag.p.y = pt.y - drag.dy; tPos(drag.p);
+});
+const tEnd = () => {
+  if (!drag) return; const p = drag.p;
+  if (!drag.moved && p.t === 'x') { const cx = p.x + p.w / 2, cy = p.y + p.h / 2; [p.w, p.h] = [p.h, p.w]; p.x = cx - p.w / 2; p.y = cy - p.h / 2; }
+  tSnap(p); tPos(p); requestAnimationFrame(() => p.el.classList.remove('drag'));
+  drag = null; tCheck();
+};
+tSvg.addEventListener('pointerup', tEnd); tSvg.addEventListener('pointercancel', tEnd);
+$('#tShuffle').onclick = tScatter;
+$('#tSolve').onclick = () => {
+  const [a, b, c] = tExpr; const F = factorQuad(a, b, c);
+  if (!F || F.g !== 1 || F.r < 0 || F.s < 0) { $('#tileMsg').innerHTML = '<span class="bad">No hay forma:</span> ninguna disposición de estas piezas forma un rectángulo.<br><span class="muted">No existen enteros que sumen ' + b + ' y multipliquen ' + c + '.</span>'; return; }
+  const cols = [...Array(F.p).fill(TX), ...Array(F.r).fill(TU)], rows = [...Array(F.q).fill(TX), ...Array(F.s).fill(TU)];
+  const W = cols.reduce((s, v) => s + v, 0), H = rows.reduce((s, v) => s + v, 0);
+  const ox = (BW - W) / 2 + 1, oy = (BH - H) / 2 + .5;
+  const pool = { sq: tP.filter(p => p.t === 'sq'), x: tP.filter(p => p.t === 'x'), u: tP.filter(p => p.t === 'u') };
+  let yy = oy;
+  rows.forEach(rh => {
+    let xx = ox;
+    cols.forEach(cw => {
+      const t = cw === TX && rh === TX ? 'sq' : (cw === TU && rh === TU ? 'u' : 'x');
+      const p = pool[t].shift(); p.w = cw; p.h = rh; p.x = xx; p.y = yy; tPos(p);
+      xx += cw;
+    });
+    yy += rh;
+  });
+  setTimeout(tCheck, 600);
+};
+$$('[data-tile]').forEach(bt => bt.onclick = () => tNew(...bt.dataset.tile.split(',').map(Number)));
+tNew(1, 5, 6);
+
+/* ================= aspa por tanteo ================= */
+const aspaPlot = new Plot($('#aspaCv'));
+const A = { a: 2, b: 7, c: 3, p: 1, q: 2, r: 1, s: 3, tries: 0, solved: false };
+const pairsA = a => { const o = []; for (let p = 1; p * p <= a; p++) if (a % p === 0) o.push([p, a / p]); return o; };
+const pairsC = c => { const o = []; const m = Math.abs(c); for (let r = 1; r * r <= m; r++) if (m % r === 0) { o.push([r, c / r]); o.push([-r, -c / r]); } return o; };
+function aspaLoad() {
+  A.a = +$('#aa').value; A.b = +$('#ab').value; A.c = +$('#ac').value; A.tries = 0; A.solved = false;
+  $('#aLab').textContent = poly(A.a, 0, 0); $('#cLab').textContent = fmtNum(A.c);
+  if (!(A.a > 0) || !Number.isInteger(A.a) || !Number.isInteger(A.b) || !Number.isInteger(A.c) || A.c === 0) {
+    $('#aPairs').innerHTML = ''; $('#cPairs').innerHTML = '';
+    $('#aspaMsg').innerHTML = '<p class="muted">Usa enteros con a &gt; 0 y c ≠ 0 (si a &lt; 0, saca primero −1 como factor común).</p>';
+    $('#aspaSvg').innerHTML = ''; aspaPlot.set({ empty: '' }); return;
+  }
+  const pa = pairsA(A.a), pc = pairsC(A.c);
+  [A.p, A.q] = pa[0]; [A.r, A.s] = pc[0];
+  $('#aPairs').innerHTML = pa.map(([p, q], i) => `<button data-ap="${p},${q}" class="${i ? '' : 'on'}">${lin(p, 0)} · ${lin(q, 0)}</button>`).join('');
+  $('#cPairs').innerHTML = pc.map(([r, s], i) => `<button data-cp="${r},${s}" class="${i ? '' : 'on'}">(${fmtNum(r)}) · (${fmtNum(s)})</button>`).join('');
+  aspaRender();
+}
+function aspaRender() {
+  const { p, q, r, s, b } = A; const c1 = p * s, c2 = q * r, sum = c1 + c2, ok = sum === b;
+  const col = ok ? 'var(--good)' : 'var(--bad)';
+  $('#aspaSvg').innerHTML = `
+    <g font-family="Cambria Math,Times New Roman,serif" font-size="38" fill="var(--fg)" text-anchor="middle">
+      <text x="70" y="62">${lin(p, 0)}</text><text x="70" y="152">${lin(q, 0)}</text>
+      <text x="215" y="62">${sgn(r)}</text><text x="215" y="152">${sgn(s)}</text>
+    </g>
+    <line x1="110" y1="58" x2="175" y2="136" stroke="var(--accent)" stroke-width="4"/>
+    <line x1="110" y1="136" x2="175" y2="58" stroke="var(--root)" stroke-width="4"/>
+    <g font-family="system-ui,sans-serif" font-size="25" fill="var(--muted)">
+      <text x="275" y="62"><tspan fill="var(--accent)">●</tspan> ${lin(p, 0)} · (${fmtNum(s)}) = ${lin(c1, 0)}</text>
+      <text x="275" y="152"><tspan fill="var(--root)">●</tspan> ${lin(q, 0)} · (${fmtNum(r)}) = ${lin(c2, 0)}</text>
+      <text x="275" y="107" fill="${col}" font-weight="700">Suma: ${lin(sum, 0)} ${ok ? '✔' : '✘ · meta ' + lin(b, 0)}</text>
+    </g>`;
+  $('#aspaTries').textContent = 'Intentos: ' + A.tries;
+  if (ok) {
+    A.solved = true;
+    const F = { g: 1, p, r, q, s };
+    $('#aspaMsg').innerHTML = '<p class="good">¡Funciona! ' + (A.tries ? 'Lo lograron en ' + A.tries + ' intento' + (A.tries > 1 ? 's' : '') + '.' : '') + '</p><p class="m big rootc">' + poly(A.a, A.b, A.c) + ' = ' + factorStr(F) + '</p><p class="muted">Cada factor se anula en un corte con el eje x: ' + exactRoots(A.a, A.b, A.c).labels.map(l => 'x = ' + l).join(' y ') + '</p>';
+    aspaPlot.set(quadSpec(A.a, A.b, A.c));
+  } else {
+    $('#aspaMsg').innerHTML = '<p class="muted">Cambia las descomposiciones hasta que la suma en cruz dé <b>' + lin(A.b, 0) + '</b>.</p>';
+    aspaPlot.set({ empty: 'La gráfica aparece cuando el aspa funcione' });
+  }
+}
+$('#aPairs').addEventListener('click', e => { const bt = e.target.closest('[data-ap]'); if (!bt) return; [A.p, A.q] = bt.dataset.ap.split(',').map(Number); $$('#aPairs button').forEach(x => x.classList.toggle('on', x === bt)); A.tries++; aspaRender(); });
+$('#cPairs').addEventListener('click', e => { const bt = e.target.closest('[data-cp]'); if (!bt) return; [A.r, A.s] = bt.dataset.cp.split(',').map(Number); $$('#cPairs button').forEach(x => x.classList.toggle('on', x === bt)); A.tries++; aspaRender(); });
+$('#swapRS').onclick = () => { if (!A.a) return; [A.r, A.s] = [A.s, A.r]; A.tries++; aspaRender(); };
+$('#aspaAns').onclick = () => {
+  const F = factorQuad(A.a, A.b, A.c);
+  if (!F) { $('#aspaMsg').innerHTML = '<p class="bad">Ninguna combinación funciona: no se factoriza con enteros.</p><p class="muted">¿Corta el eje x? Lo veremos con el discriminante.</p>'; aspaPlot.set(quadSpec(A.a, A.b, A.c)); return; }
+  A.p = F.g * F.p; A.r = F.g * F.r; A.q = F.q; A.s = F.s; aspaRender();
+};
+['#aa', '#ab', '#ac'].forEach(id => $(id).addEventListener('change', aspaLoad));
+$$('[data-aspa]').forEach(bt => bt.onclick = () => { const [a, b, c] = bt.dataset.aspa.split(','); $('#aa').value = a; $('#ab').value = b; $('#ac').value = c; aspaLoad(); });
+aspaLoad();
+
+/* ================= valores de k ================= */
+const kPlot = new Plot($('#kCv')); const found = new Set();
+function updK() {
+  const k = +$('#kk').value; $('#kko').textContent = fmtNum(k);
+  $('#kExpr').textContent = poly(1, k, 12);
+  const F = factorQuad(1, k, 12), D = k * k - 48;
+  if (F) { found.add(k); $('#kMsg').innerHTML = '<span class="good">Se factoriza:</span> <span class="m rootc">' + factorStr(F) + '</span><br><span class="muted">Corta el eje x en enteros.</span>'; }
+  else if (D >= 0) $('#kMsg').innerHTML = '<span class="bad">No se factoriza con enteros.</span><br><span class="muted">Corta el eje x, pero no en enteros.</span>';
+  else $('#kMsg').innerHTML = '<span class="bad">No se factoriza.</span><br><span class="muted">La parábola no corta el eje x.</span>';
+  $('#kN').textContent = found.size;
+  $('#kFound').innerHTML = found.size ? [...found].sort((a, b) => a - b).map(v => '<span class="chip m">k = ' + fmtNum(v) + '</span>').join(' ') + (found.size === 6 ? '<br><span class="good">¡Los 6 valores! 🎉</span>' : '') : 'Mueve k y busca…';
+  kPlot.set(quadSpec(1, k, 12, { xmin: -16, xmax: 16, ymin: -40, ymax: 60 }));
+}
+$('#kk').addEventListener('input', updK); updK();
+
+/* ================= producto nulo ================= */
+const pnPlot = new Plot($('#pnCv'));
+const pnSteps = [
+  'Ancho: <span class="m">x</span> · Largo: <span class="m">x + 3</span>',
+  'Ecuación: <span class="m">x(x + 3) = 40</span>',
+  'Ordenada: <span class="m">x² + 3x − 40 = 0</span>',
+  'Factorizada: <span class="m">(x + 8)(x − 5) = 0</span>',
+  '<span class="m">x + 8 = 0</span> o <span class="m">x − 5 = 0</span> → <span class="m rootc">x = −8 o x = 5</span>',
+  'Una medida no puede ser negativa: <span class="good">ancho 5 m, largo 8 m</span>.'
+];
+let pnI = 0, pnOk = false;
+function pnDraw() {
+  if (pnI >= 5 || pnOk) pnPlot.set(quadSpec(1, 3, -40, { rootLabels: ['x = −8 ✗', 'x = 5 ✓'], bad: [true, false], xmin: -12, xmax: 9, ymin: -50, ymax: 40 }));
+  else pnPlot.set({ empty: 'La gráfica aparece al resolver' });
+}
+$('#pnStep').onclick = () => { if (pnI < pnSteps.length) { const li = document.createElement('li'); li.innerHTML = pnSteps[pnI++]; $('#pnSteps').appendChild(li); } else { pnI = 0; $('#pnSteps').innerHTML = ''; } $('#pnStep').textContent = pnI >= pnSteps.length ? 'Reiniciar' : 'Siguiente paso'; pnDraw(); };
+$('#pnCheck').onclick = () => {
+  const w = +$('#pnW').value, l = +$('#pnL').value;
+  if (w === 5 && l === 8) { pnOk = true; $('#pnFb').innerHTML = '<span class="good">¡Correcto! 5 × 8 = 40 y 8 = 5 + 3.</span>'; }
+  else if (w * l === 40 && l - w !== 3) $('#pnFb').innerHTML = '<span class="bad">El área da 40, pero el largo no es 3 m más que el ancho.</span>';
+  else if (l - w === 3 && w * l !== 40) $('#pnFb').innerHTML = '<span class="bad">La diferencia es 3, pero el área da ' + (w * l) + ' m².</span>';
+  else $('#pnFb').innerHTML = '<span class="bad">Revisa: necesitas área 40 y largo = ancho + 3.</span>';
+  pnDraw();
+};
+pnDraw();
+
+/* ================= completar con fichas ================= */
+const ccfSvg = $('#ccfSvg'); let ccfDone = false;
+function ccfDraw() {
+  const b = +$('#ccfB').value, h = b / 2; $('#ccfBo').textContent = b;
+  const o = 1.5, S = TX + h * TU, k = Math.min(1, 15 / S);
+  $('#ccfExpr').textContent = ccfDone ? poly(1, b, h * h) + ' = (' + lin(1, h) + ')²' : poly(1, b, 0) + ' + ?';
+  let s = `<g transform="translate(${o} ${o}) scale(${k})">`;
+  const rc = (x, y, w, hh, cl, lab, fsz, extra = '') => `<g class="pc ${cl}" style="cursor:default"><rect x="${x}" y="${y}" width="${w}" height="${hh}" ${extra}/>${lab ? `<text x="${x + w / 2}" y="${y + hh / 2}" font-size="${fsz}">${lab}</text>` : ''}</g>`;
+  s += rc(0, 0, TX, TX, 'sq', 'x²', 2.4);
+  for (let i = 0; i < h; i++) s += rc(TX + i * TU, 0, TU, TX, 'tx', 'x', 1.1);
+  for (let j = 0; j < h; j++) s += rc(0, TX + j * TU, TX, TU, 'tx', 'x', 1.1);
+  if (ccfDone) {
+    for (let i = 0; i < h; i++) for (let j = 0; j < h; j++) s += `<g class="pc un popin" style="animation-delay:${(i * h + j) * 60}ms;cursor:default"><rect x="${TX + i * TU}" y="${TX + j * TU}" width="${TU}" height="${TU}"/><text x="${TX + i * TU + TU / 2}" y="${TX + j * TU + TU / 2}" font-size=".9">1</text></g>`;
+    s += `<text class="lbl" x="${S / 2}" y="-.7" font-size="1.2">${lin(1, h)}</text><text class="lbl" x="-.8" y="${S / 2}" font-size="1.2" transform="rotate(-90 -.8 ${S / 2})">${lin(1, h)}</text>`;
+  } else {
+    s += `<rect class="hole" x="${TX}" y="${TX}" width="${h * TU}" height="${h * TU}"/><text class="lbl" x="${TX + h * TU / 2}" y="${TX + h * TU / 2}" font-size="${Math.max(1.2, h * .7)}">?</text>`;
+  }
+  s += '</g>'; ccfSvg.innerHTML = s;
+  $('#ccfId').textContent = poly(1, b, 0) + ' + ' + (h * h) + ' = (' + lin(1, h) + ')²';
+}
+$('#ccfB').addEventListener('input', () => { ccfDone = false; $('#ccfFb').textContent = ''; $('#ccfIn').value = ''; $('#ccfRule').classList.remove('show'); ccfDraw(); });
+$('#ccfCheck').onclick = () => {
+  const b = +$('#ccfB').value, n = +$('#ccfIn').value;
+  if (n === (b / 2) ** 2) { $('#ccfFb').innerHTML = '<span class="good">¡Sí! Es un cuadradito de ' + (b / 2) + ' × ' + (b / 2) + '.</span>'; ccfDone = true; $('#ccfRule').classList.add('show'); ccfDraw(); }
+  else $('#ccfFb').innerHTML = '<span class="bad">No. Mira el hueco: ¿cuántas unidades caben por lado?</span>';
+};
+$('#ccfFill').onclick = () => { ccfDone = true; $('#ccfRule').classList.add('show'); ccfDraw(); };
+ccfDraw();
+
+/* ================= completar cuadrado (álgebra) ================= */
+const ccPlot = new Plot($('#ccCv'));
+const ccSteps = [
+  'Pasa el independiente: <span class="m">x² + 4x = 1</span>',
+  'Mitad de 4 es 2; 2² = 4. Súmalo a ambos lados: <span class="m">x² + 4x + 4 = 1 + 4</span>',
+  'Cuadrado perfecto: <span class="m">(x + 2)² = 5</span>',
+  '¡Dos signos!: <span class="m">x + 2 = ±√5</span>',
+  '<span class="m rootc">x = −2 ± √5</span> (≈ 0,24 y ≈ −4,24)',
+  'En la gráfica: el vértice es <span class="m">(−2; −5)</span>, lo que dice <span class="m">(x + 2)² − 5</span>.'
+];
+let ccI = 0;
+function ccDraw() {
+  const sp = quadSpec(1, 4, -1, { rootLabels: ['−2 − √5 ≈ −4,24', '−2 + √5 ≈ 0,24'], xmin: -7, xmax: 3, ymin: -7, ymax: 12 });
+  if (ccI < 5) sp.roots = [];
+  if (ccI >= 6) sp.points = [{ x: -2, y: -5, label: 'V(−2; −5)', below: true }];
+  ccPlot.set(sp);
+}
+$('#ccStep').onclick = () => { if (ccI < ccSteps.length) { const li = document.createElement('li'); li.innerHTML = ccSteps[ccI++]; $('#ccSteps').appendChild(li); } else { ccI = 0; $('#ccSteps').innerHTML = ''; } $('#ccStep').textContent = ccI >= ccSteps.length ? 'Reiniciar' : 'Siguiente paso'; ccDraw(); };
+ccDraw();
+
+/* ================= discriminante ================= */
+const dPlot = new Plot($('#dCv')); let pred = null;
+function updD() {
+  let a = +$('#da').value; if (a === 0) { a = 1; $('#da').value = 1; }
+  const b = +$('#db').value, c = +$('#dc').value;
+  $('#dao').textContent = fmtNum(a); $('#dbo').textContent = fmtNum(b); $('#dco').textContent = fmtNum(c);
+  $('#dExpr').textContent = poly(a, b, c) + ' = 0';
+  const D = b * b - 4 * a * c, r = Math.round(Math.sqrt(Math.max(D, 0))), sq = D >= 0 && r * r === D;
+  const F = factorQuad(a, b, c), ex = exactRoots(a, b, c);
+  const nc = D > 0 ? 2 : D === 0 ? 1 : 0;
+  const cortes = nc === 2 ? '2 cortes' : nc === 1 ? '1 corte (toca el eje)' : 'ningún corte';
+  if (pred !== null) { $('#predFb').innerHTML = pred === nc ? '<span class="good">¡Acertaste!</span>' : '<span class="bad">No: tiene ' + nc + '.</span>'; pred = null; }
+  $('#dOut').innerHTML =
+    '<p>b² − 4ac = ' + fmtNum(b * b) + ' − ' + (4 * a * c < 0 ? '(' + fmtNum(4 * a * c) + ')' : fmtNum(4 * a * c)) + ' = <b class="m">' + fmtNum(D) + '</b></p>' +
+    '<p>¿Cuadrado perfecto? ' + (sq ? '<span class="good">Sí (' + r + '²)</span>' : '<span class="bad">No</span>') + ' · <span class="rootc">' + cortes + '</span></p>' +
+    '<p class="m">' + ex.text + '</p>' +
+    '<p>' + (F ? 'Factorización: <span class="m rootc">' + factorStr(F) + '</span>' : '<span class="bad">No se factoriza con enteros</span>') + '</p>';
+  dPlot.set(quadSpec(a, b, c, { vertex: true }));
+}
+['#da', '#db', '#dc'].forEach(id => $(id).addEventListener('input', updD));
+$$('[data-d]').forEach(bt => bt.onclick = () => { const [a, b, c] = bt.dataset.d.split(','); $('#da').value = a; $('#db').value = b; $('#dc').value = c; updD(); });
+$$('[data-pred]').forEach(bt => bt.onclick = () => { pred = +bt.dataset.pred; $('#predFb').innerHTML = '<span class="muted">Predicción: ' + pred + '. Ahora mueve un deslizador o elige un trinomio.</span>'; });
+updD();
+
+/* ================= juego ¿dónde corta? ================= */
+const gPlot = new Plot($('#gCv'));
+const G = { lvl: 1, a: 1, b: 0, c: 0, roots: [], marks: [], checked: false, hits: 0, total: 0 };
+const ri = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+function gNew() {
+  if (G.lvl === 1) { const r1 = ri(-7, 7), r2 = Math.random() < .12 ? r1 : ri(-7, 7); G.a = 1; G.b = -(r1 + r2); G.c = r1 * r2; G.roots = [...new Set([r1, r2])].sort((p, q) => p - q); }
+  else { let k; do { k = ri(-9, 9); } while (k % 2 === 0); const r2 = ri(-6, 6); G.a = 2; G.b = -(k + 2 * r2); G.c = k * r2; G.roots = [k / 2, r2].sort((p, q) => p - q); }
+  G.marks = []; G.checked = false;
+  $('#gExpr').textContent = poly(G.a, G.b, G.c) + ' = 0';
+  $('#gFb').textContent = ''; $('#gSol').textContent = '';
+  gDraw();
+}
+function gDraw() {
+  if (!G.checked) {
+    gPlot.set({ xmin: -9.5, xmax: 9.5, ymin: -8, ymax: 8, xStep: 1, fns: [], marks: G.marks.map(x => ({ x, label: 'x = ' + fmtNum(x) })) });
+  } else {
+    const sp = quadSpec(G.a, G.b, G.c, { xmin: -9.5, xmax: 9.5, ymin: -8, ymax: 8 }); sp.xStep = 1;
+    sp.marks = G.marks.map(x => { const ok = G.roots.some(r => Math.abs(r - x) < 1e-9); return { x, color: ok ? '--good' : '--bad', label: ok ? '✔' : '✘' }; });
+    gPlot.set(sp);
+  }
+}
+$('#gCv').addEventListener('click', e => {
+  if (G.checked) return; let x = gPlot.xAt(e.clientX); if (x === null) return;
+  const st = G.lvl === 1 ? 1 : .5; x = Math.round(x / st) * st; if (Math.abs(x) < 1e-9) x = 0;
+  const i = G.marks.findIndex(m => Math.abs(m - x) < 1e-9);
+  if (i >= 0) G.marks.splice(i, 1); else { if (G.marks.length >= 2) G.marks.shift(); G.marks.push(x); }
+  gDraw();
+});
+$('#gCheck').onclick = () => {
+  if (G.checked) return;
+  if (!G.marks.length) { $('#gFb').innerHTML = '<span class="muted">Primero toca el eje x.</span>'; return; }
+  G.checked = true; G.total++;
+  const ms = [...G.marks].sort((p, q) => p - q);
+  const ok = ms.length === G.roots.length && ms.every((m, i) => Math.abs(m - G.roots[i]) < 1e-9);
+  if (ok) G.hits++;
+  $('#gFb').innerHTML = ok ? '<span class="good">¡Exacto! 🎯</span>' : '<span class="bad">Casi…</span>';
+  const F = factorQuad(G.a, G.b, G.c);
+  $('#gSol').innerHTML = '<span class="m">' + factorStr(F) + ' = 0</span> → cortes en ' + G.roots.map(r => 'x = ' + (Number.isInteger(r) ? fmtNum(r) : frac(r * 2, 2))).join(' y ') + (G.roots.length === 1 ? ' (raíz doble: solo toca el eje)' : '');
+  $('#gScore').textContent = G.hits + ' / ' + G.total;
+  gDraw();
+};
+$('#gNew').onclick = gNew;
+$$('[data-lvl]').forEach(bt => bt.onclick = () => { G.lvl = +bt.dataset.lvl; $$('[data-lvl]').forEach(x => x.classList.toggle('on', x === bt)); gNew(); });
+gNew();
+
+/* ================= retos ================= */
+const rPlot = new Plot($('#rCv'));
+const retos = [
+  { q: '<b>R1.</b> Una pelota se lanza hacia arriba y su altura es <span class="m">h = 20t − 5t²</span> (metros, segundos). ¿Cuándo vuelve a tocar el suelo?',
+    sol: '<span class="m">20t − 5t² = 0 → 5t(4 − t) = 0</span> → <span class="m">t = 0</span> (lanzamiento) o <span class="m rootc">t = 4 s</span>.<br><span class="muted">Bonus: altura máxima 20 m en t = 2 s (el vértice).</span>',
+    spec: () => { const s = quadSpec(-5, 20, 0, { rootLabels: ['t = 0', 't = 4 s'], xmin: -.6, xmax: 5, ymin: -5, ymax: 25, dom: [0, 4.3], vertex: true, xName: 't (s)', yName: 'h (m)' }); s.points[0].label = 'máx. (2; 20)'; s.points[0].below = false; return s; } },
+  { q: '<b>R2.</b> El producto de dos enteros consecutivos es 156. ¿Cuáles son? (Hay dos respuestas.)',
+    sol: '<span class="m">n(n + 1) = 156 → n² + n − 156 = 0 → (n + 13)(n − 12) = 0</span><br><span class="rootc">12 y 13</span>, o <span class="rootc">−13 y −12</span>.',
+    spec: () => quadSpec(1, 1, -156, { rootLabels: ['n = −13', 'n = 12'], xmin: -18, xmax: 17, ymin: -180, ymax: 120, xName: 'n' }) },
+  { q: '<b>R3.</b> Resuelve <span class="m">x⁴ − 5x² + 4 = 0</span>.', extra: '<p class="muted">Pista: llama u = x².</p>',
+    sol: '<span class="m">u² − 5u + 4 = 0 → (u − 1)(u − 4) = 0</span> → <span class="m">x² = 1</span> o <span class="m">x² = 4</span><br><span class="rootc m">x = ±1, ±2</span>: ¡4 cortes!',
+    spec: () => ({ xmin: -3, xmax: 3, ymin: -3.5, ymax: 8, fns: [{ f: x => x ** 4 - 5 * x * x + 4 }], roots: [-2, -1, 1, 2].map(x => ({ x, label: 'x = ' + fmtNum(x) })) }) },
+  { q: '<b>R4.</b> Si <span class="m">x² − 7x + 1 = 0</span>, halla <span class="m">x + 1/x</span> sin hallar x.', extra: '<p class="muted">Pista: divide toda la ecuación entre x.</p>',
+    sol: '<span class="m">x − 7 + 1/x = 0 → x + 1/x = </span><span class="rootc m">7</span><br><span class="muted">Las raíces son (7 ± 3√5)/2 ≈ 0,15 y ≈ 6,85; en ambas x + 1/x = 7.</span>',
+    spec: () => quadSpec(1, -7, 1, { xmin: -2, xmax: 9, ymin: -12, ymax: 12 }) },
+  { q: '<b>R5.</b> ¿Para qué valores de k la ecuación <span class="m">x² + kx + 9 = 0</span> tiene una sola solución?',
+    extra: '<div class="ctrl"><span>k</span><input type="range" id="r5k" min="-10" max="10" value="0"><output id="r5ko">0</output></div><p id="r5msg" class="muted"></p>',
+    sol: 'Una sola solución ⇔ <span class="m">b² − 4ac = 0</span>: <span class="m">k² − 36 = 0</span> → <span class="rootc m">k = ±6</span>.<br><span class="muted">La parábola solo toca el eje x.</span>',
+    spec: () => { const k = +($('#r5k')?.value || 0); return quadSpec(1, k, 9, { xmin: -9, xmax: 9, ymin: -12, ymax: 30 }); }, live: true },
+  { q: '<b>R6.</b> Un jardín de 10 m × 6 m se rodea con un camino de ancho uniforme. El área total es 96 m². ¿Cuál es el ancho del camino?',
+    sol: '<span class="m">(10 + 2a)(6 + 2a) = 96 → 4a² + 32a − 36 = 0 → a² + 8a − 9 = 0 → (a + 9)(a − 1) = 0</span><br>Ancho del camino: <span class="rootc m">a = 1 m</span> (a = −9 no sirve).',
+    spec: () => quadSpec(1, 8, -9, { rootLabels: ['a = −9 ✗', 'a = 1 ✓'], bad: [true, false], xmin: -12, xmax: 4, ymin: -30, ymax: 25, xName: 'a' }) },
+];
+let rI = 0, rShown = false;
+retos.forEach((r, i) => { const b = document.createElement('button'); b.textContent = 'R' + (i + 1); b.onclick = () => selR(i); $('#rTabs').appendChild(b); });
+function rDraw() {
+  const r = retos[rI];
+  if (rShown || r.live) rPlot.set(r.spec()); else rPlot.set({ empty: 'Primero intenten resolverlo 🙂' });
+  $('#rLeg').textContent = (rShown || r.live) ? 'Los puntos naranja son los cortes con el eje.' : 'La gráfica aparece al mostrar la solución.';
+}
+function selR(i) {
+  rI = i; rShown = false; const r = retos[i];
+  [...$('#rTabs').children].forEach((b, j) => b.classList.toggle('on', j === i));
+  $('#rQ').innerHTML = r.q; $('#rExtra').innerHTML = r.extra || '';
+  $('#rSol').innerHTML = r.sol; $('#rSol').classList.remove('show'); $('#rSolBtn').textContent = 'Ver solución';
+  if (i === 4) {
+    const upd = () => {
+      const k = +$('#r5k').value; $('#r5ko').textContent = fmtNum(k); const D = k * k - 36;
+      $('#r5msg').innerHTML = '<span class="m">' + poly(1, k, 9) + ' = 0</span> → ' + (D > 0 ? '2 soluciones' : D === 0 ? '<span class="good">¡una sola solución!</span>' : 'ninguna solución real');
+      rDraw();
+    };
+    $('#r5k').addEventListener('input', upd); upd();
+  }
+  rDraw();
+}
+$('#rSolBtn').onclick = () => { rShown = !rShown; $('#rSol').classList.toggle('show', rShown); $('#rSolBtn').textContent = rShown ? 'Ocultar solución' : 'Ver solución'; rDraw(); };
+selR(0);
+
+/* ================= puente: recta y parábola ================= */
+const sPlot = new Plot($('#sCv'));
+function updS() {
+  const k = +$('#sK').value; $('#sKo').textContent = fmtNum(k);
+  // x² − 4x + 3 = x + k  →  x² − 5x + (3 − k) = 0
+  const D = 25 - 4 * (3 - k); const pts = [];
+  if (D >= 0) { const s = Math.sqrt(D); [(5 - s) / 2, (5 + s) / 2].forEach(x => { if (!pts.some(p => Math.abs(p.x - x) < 1e-9)) pts.push({ x, y: x + k }); }); }
+  const r2 = v => fmtNum(Math.round(v * 100) / 100);
+  sPlot.set({ xmin: -1.5, xmax: 6.5, ymin: -3, ymax: 8, fns: [{ f: x => x * x - 4 * x + 3 }, { f: x => x + k, color: '--curve2' }],
+    points: pts.map((p, i) => ({ x: p.x, y: p.y, color: '--root', label: '(' + r2(p.x) + '; ' + r2(p.y) + ')', below: i === 0 })) });
+  $('#sMsg').innerHTML = pts.length === 2 ? 'Se cruzan en <b>2 puntos</b>.' : pts.length === 1 ? '<b>Se tocan en 1 punto</b> (la recta es tangente).' : '<b>No se cruzan.</b>';
+}
+$('#sK').addEventListener('input', updS); updS();
+
+go(0);
+})();
+</script>
+</body>
+</html>
