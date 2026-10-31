@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>El lenguaje de los patrones</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: cuaderno cuadriculado; cabecera fija con navegación, cronómetro y puntajes; cada momento de la sesión es una vista. Verde = crecer sumando, rojo teja = crecer multiplicando. */
+:root{
+  --paper:#f5f7f4; --grid:#e2e8e3; --card:#ffffff; --ink:#18252d; --ink-2:#4a5a62; --line:#cdd6d2;
+  --suma:#1d7a60; --suma-soft:#d5ebe3; --mult:#c2432a; --mult-soft:#f7ddd4;
+  --accent:#2747c9; --accent-soft:#dfe5fb; --stick:#a86f22;
+  --ok:#1c7a3a; --ok-soft:#d8eedd; --bad:#b3261e; --bad-soft:#f6d9d6;
+  --display:"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Consolas, monospace;
+  --r:12px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#11181c; --grid:#1a242a; --card:#172127; --ink:#e8eeeb; --ink-2:#a8b6ba; --line:#2d3a41;
+  --suma:#4cc59f; --suma-soft:#16362d; --mult:#ff7d5e; --mult-soft:#3d2018;
+  --accent:#93a8ff; --accent-soft:#202b55; --stick:#dca452;
+  --ok:#5fd07f; --ok-soft:#173523; --bad:#ff8a80; --bad-soft:#3d1c1a; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#11181c; --grid:#1a242a; --card:#172127; --ink:#e8eeeb; --ink-2:#a8b6ba; --line:#2d3a41;
+  --suma:#4cc59f; --suma-soft:#16362d; --mult:#ff7d5e; --mult-soft:#3d2018;
+  --accent:#93a8ff; --accent-soft:#202b55; --stick:#dca452;
+  --ok:#5fd07f; --ok-soft:#173523; --bad:#ff8a80; --bad-soft:#3d1c1a; color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:28px 28px;color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--card)}
+h1,h2,h3{font-family:var(--display);line-height:1.1;text-wrap:balance;margin:0}
+h2{font-size:clamp(1.6rem,3.2vw,2.4rem);font-weight:800}
+h3{font-size:1.25rem;font-weight:600}
+p{margin:0}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* Cabecera */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--card);border-bottom:1px solid var(--line);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+.top-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;max-width:1280px;margin:0 auto}
+.brand{display:flex;flex-direction:column;min-width:0;margin-right:auto}
+.brand small{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.brand b{font-family:var(--display);font-size:1.2rem}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap;max-width:1280px;margin:8px auto 0}
+nav.tabs a{text-decoration:none;color:var(--ink-2);padding:6px 12px;border-radius:999px;font-weight:700;font-size:.95rem;border:1px solid transparent}
+nav.tabs a span{font-family:var(--mono);font-size:.75rem;opacity:.7;margin-left:4px}
+nav.tabs a:hover{border-color:var(--line);color:var(--ink)}
+nav.tabs a[aria-current="page"]{background:var(--ink);color:var(--card)}
+.timer{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 14px}
+.timer output{font-family:var(--mono);font-size:1.35rem;font-weight:700;min-width:4.2ch;text-align:right}
+.timer.done output{color:var(--bad);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.icon-btn{border:1px solid var(--line);background:var(--card);border-radius:999px;min-width:38px;height:38px;padding:0 10px;cursor:pointer;font-weight:700}
+.icon-btn:hover{border-color:var(--ink-2)}
+.score-strip{display:flex;gap:6px;flex-wrap:wrap}
+.score-chip{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 12px;background:var(--card);cursor:pointer}
+.score-chip b{font-family:var(--mono);background:var(--ink);color:var(--card);border-radius:999px;padding:0 9px;min-width:2.2em;text-align:center}
+.score-chip .dot{width:10px;height:10px;border-radius:50%}
+
+/* Vistas */
+main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 64px}
+.view{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.view-head{display:flex;flex-direction:column;gap:8px;max-width:70ch}
+.eyebrow{font-size:.8rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+.lede{color:var(--ink-2);font-size:1.1rem}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.card.quote{border-left:6px solid var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.muted{color:var(--ink-2)}
+.small{font-size:.9rem}
+.btn{border:1px solid var(--ink);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--card)}
+.btn.ghost{border-color:var(--line)}
+.btn:hover{filter:brightness(.97)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--card);flex-wrap:wrap}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 14px;font-weight:700;cursor:pointer;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--card)}
+label.slider{display:block;font-weight:700}
+label.slider input{display:block;margin-top:4px}
+label.slider span.v{font-family:var(--mono)}
+input[type=range]{width:100%;accent-color:var(--accent);height:28px}
+input[type=text],input[type=number]{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper);min-width:0}
+.big-num{font-family:var(--mono);font-weight:700;font-size:clamp(1.8rem,4.5vw,3rem);line-height:1.1;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tag{align-self:flex-start;display:inline-block;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+.tag.suma{background:var(--suma-soft);color:var(--suma)}
+.tag.mult{background:var(--mult-soft);color:var(--mult)}
+.callout{border-radius:10px;padding:12px 14px;background:var(--accent-soft)}
+.callout.ok{background:var(--ok-soft)}
+.callout.bad{background:var(--bad-soft)}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:center}
+th{background:var(--paper);font-size:.9rem}
+td.reveal{cursor:pointer;color:var(--ink-2)}
+td.reveal:hover{background:var(--accent-soft)}
+
+/* Inicio */
+.offer{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px}
+.opt{border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:10px;border:2px solid}
+.opt.a{border-color:var(--suma);background:var(--suma-soft)}
+.opt.b{border-color:var(--mult);background:var(--mult-soft)}
+.opt h3{font-size:1.4rem}
+.vote{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.vote output{font-family:var(--mono);font-size:2rem;font-weight:700}
+.bars{display:flex;flex-direction:column;gap:12px}
+.bar{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:center}
+.bar .track{height:34px;background:var(--paper);border:1px solid var(--line);border-radius:8px;overflow:hidden;position:relative}
+.bar .fill{height:100%;transition:width .35s ease}
+.bar .fill.a{background:var(--suma)}
+.bar .fill.b{background:var(--mult)}
+.bar .lbl{position:absolute;inset:0 10px;display:flex;align-items:center;font-family:var(--mono);font-weight:700;font-size:.95rem}
+.ladder{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.ladder li{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:6px 10px;border-radius:8px;border:1px solid var(--line);color:var(--ink-2)}
+.ladder li.passed{background:var(--ok-soft);color:var(--ink);border-color:transparent}
+.ladder li.next{border:2px dashed var(--accent);color:var(--ink)}
+.ladder li .m{font-family:var(--mono);font-size:.85rem}
+.guesses{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.guess{display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:10px;border:1px solid var(--line)}
+.guess.win{border:2px solid var(--ok);background:var(--ok-soft)}
+
+/* Estaciones */
+.fig-box{background:var(--paper);border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;padding:12px;min-height:220px;overflow:hidden}
+.fig-box svg,.fig-box canvas{max-width:100%;height:auto}
+.check-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.check-row input{width:7rem}
+.board{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;max-width:440px;width:100%;aspect-ratio:1}
+.board button{border:0;border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:.7rem;color:var(--ink);padding:0;position:relative}
+.board button[aria-pressed="true"]{outline:3px solid var(--ink);outline-offset:-3px;z-index:1}
+
+/* Ahorro */
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:14px}
+.chart-wrap{overflow-x:auto}
+.chart-wrap svg{width:100%;max-width:1000px;min-width:560px;height:auto;display:block;margin:0 auto}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-weight:700}
+.legend i{display:inline-block;width:22px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+
+/* Formalización */
+.chain{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2px}
+.term{font-family:var(--mono);font-weight:700;font-size:1.3rem;padding:6px 12px;border-radius:8px;background:var(--paper);border:1px solid var(--line)}
+.step{display:flex;flex-direction:column;align-items:center;font-family:var(--mono);font-size:.8rem;padding:0 4px}
+.step .s{color:var(--suma)} .step .m{color:var(--mult)}
+.step .s.off,.step .m.off{opacity:.35;text-decoration:line-through}
+.formula{font-family:var(--mono);font-size:clamp(1.2rem,2.6vw,1.7rem);font-weight:700;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px solid var(--line);overflow-x:auto}
+.cover{cursor:pointer;background:repeating-linear-gradient(45deg,var(--accent-soft),var(--accent-soft) 8px,var(--card) 8px,var(--card) 16px);color:transparent;user-select:none}
+.cover::after{content:"Toca para revelar";color:var(--accent);font-size:.8rem;font-weight:700}
+.cover.open{background:transparent;color:inherit;cursor:default}
+.cover.open::after{content:none}
+.compare td,.compare th{text-align:left}
+.compare th:nth-child(2){color:var(--suma)} .compare th:nth-child(3){color:var(--mult)}
+
+/* Retos */
+.retos-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,320px);gap:18px}
+@media (max-width:900px){.retos-layout{grid-template-columns:1fr}}
+.reto-nav{display:flex;gap:6px;flex-wrap:wrap}
+.reto-nav button{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-weight:800;cursor:pointer;font-family:var(--mono)}
+.reto-nav button[aria-current="true"]{background:var(--ink);color:var(--card)}
+.reto-q{font-size:clamp(1.2rem,2.4vw,1.6rem);font-weight:700;line-height:1.35}
+.options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px}
+.option{display:flex;gap:12px;align-items:flex-start;text-align:left;border:2px solid var(--line);background:var(--card);border-radius:12px;padding:12px 14px;cursor:pointer;font-size:1.1rem}
+.option b{font-family:var(--mono);background:var(--paper);border-radius:8px;padding:0 8px;flex:none}
+.option:hover{border-color:var(--ink-2)}
+.option.correct{border-color:var(--ok);background:var(--ok-soft)}
+.option.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.team-pick{display:flex;gap:8px;flex-wrap:wrap}
+.team-pick button{border:2px solid var(--line);border-radius:999px;padding:6px 14px;background:var(--card);font-weight:700;cursor:pointer;display:flex;gap:8px;align-items:center}
+.team-pick button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--card)}
+.matrix td,.matrix th{padding:6px;font-size:.85rem}
+.matrix td.ok{background:var(--ok-soft);color:var(--ok);font-weight:800}
+.pts{font-family:var(--mono);font-size:.85rem;color:var(--ink-2)}
+
+/* Cierre */
+.qlist{display:flex;flex-direction:column;gap:10px}
+.qitem{border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--card);font-size:1.15rem}
+.qitem.hidden-q{color:transparent;background:repeating-linear-gradient(45deg,var(--paper),var(--paper) 8px,var(--card) 8px,var(--card) 16px);cursor:pointer;position:relative}
+.qitem.hidden-q::after{content:"Toca para mostrar la pregunta";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:.95rem}
+.ranking{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ranking li{display:grid;grid-template-columns:40px 1fr auto;gap:10px;align-items:center;padding:10px 14px;border-radius:10px;border:1px solid var(--line);font-size:1.15rem}
+.ranking li:first-child{border:2px solid var(--ok);background:var(--ok-soft)}
+.ranking .pos{font-family:var(--display);font-weight:800;font-size:1.5rem}
+
+/* Panel de equipos */
+dialog{border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:var(--ink);padding:20px;width:min(520px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+.team-edit{display:grid;grid-template-columns:14px 1fr auto auto auto;gap:8px;align-items:center}
+.team-edit input{width:100%}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:640px){body{font-size:16px}.bar{grid-template-columns:70px 1fr}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <div class="brand"><small>Taller de Álgebra · 3.º · Sesión 1</small><b>El lenguaje de los patrones</b></div>
+    <div class="score-strip" id="scoreStrip" aria-label="Puntajes por equipo"></div>
+    <div class="timer" id="timer" aria-label="Cronómetro">
+      <output id="clock" aria-live="off">20:00</output>
+      <button class="icon-btn" id="tPlay" aria-label="Iniciar o pausar cronómetro">▶</button>
+      <button class="icon-btn" id="tReset" aria-label="Reiniciar cronómetro">↺</button>
+    </div>
+    <button class="icon-btn" id="themeBtn" aria-label="Cambiar tema claro u oscuro">◐</button>
+    <button class="icon-btn" id="fsBtn" aria-label="Pantalla completa">⛶</button>
+  </div>
+  <nav class="tabs" id="tabs" aria-label="Momentos de la sesión"></nav>
+</header>
+
+<main>
+<!-- INICIO -->
+<section class="view" id="v-inicio" data-view="inicio">
+  <div class="view-head">
+    <p class="eyebrow">Inicio · 20 min</p>
+    <h2>El dilema del millonario</h2>
+    <p class="lede">Un millonario te ofrece un premio durante 30 días. Vota antes de calcular.</p>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="offer">
+        <div class="opt a">
+          <span class="tag suma">Opción A</span>
+          <h3>S/ 1000 cada día</h3>
+          <div class="vote"><button class="btn" id="voteA">+ Voto</button><output id="votesA">0</output></div>
+        </div>
+        <div class="opt b">
+          <span class="tag mult">Opción B</span>
+          <h3>1 céntimo el día 1, y se duplica cada día</h3>
+          <div class="vote"><button class="btn" id="voteB">+ Voto</button><output id="votesB">0</output></div>
+        </div>
+      </div>
+      <div class="row"><button class="btn ghost small" id="voteReset">Reiniciar votos</button></div>
+    </div>
+    <div class="card">
+      <label class="slider">Día <span class="v" id="diaV">10</span><input type="range" id="dia" min="1" max="30" value="10"></label>
+      <div class="row">
+        <button class="btn ghost" data-dia="10">Día 10</button>
+        <button class="btn ghost" data-dia="20">Día 20</button>
+        <button class="btn primary" data-dia="30">Revelar día 30</button>
+      </div>
+      <div class="grid2" style="gap:10px">
+        <div><p class="muted small">Ese día, la opción B entrega</p><p class="big-num" id="diaB">S/ 5,12</p></div>
+        <div><p class="muted small">Ese día, la opción A entrega</p><p class="big-num">S/ 1000</p></div>
+      </div>
+      <p class="muted small">Total acumulado hasta ese día</p>
+      <div class="bars">
+        <div class="bar"><b>A</b><div class="track"><div class="fill a" id="barA"></div><div class="lbl" id="lblA"></div></div></div>
+        <div class="bar"><b>B</b><div class="track"><div class="fill b" id="barB"></div><div class="lbl" id="lblB"></div></div></div>
+      </div>
+      <p class="callout" id="diaMsg"></p>
+    </div>
+  </div>
+
+  <div class="view-head" style="margin-top:12px">
+    <h2>La hoja que llega a la Luna</h2>
+    <p class="lede">Una hoja bond mide 0,1 mm de grosor. Cada doblez duplica el grosor. ¿Cuántos dobleces harían falta para llegar a la Luna, a 384 400 km?</p>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Apuestas de los equipos</h3>
+      <div class="guesses" id="guesses"></div>
+      <div class="row">
+        <button class="btn primary" id="moonReveal">Revelar la respuesta</button>
+        <button class="btn" id="moonPoint" hidden>+1 punto al equipo más cercano</button>
+      </div>
+      <p class="callout" id="moonMsg" hidden></p>
+    </div>
+    <div class="card">
+      <label class="slider">Dobleces <span class="v" id="dobV">3</span><input type="range" id="dob" min="0" max="45" value="3"></label>
+      <p class="muted small">Grosor de la hoja doblada</p>
+      <p class="big-num" id="grosor">0,8 mm</p>
+      <ol class="ladder" id="ladder"></ol>
+    </div>
+  </div>
+  <div class="card quote"><p><b>Pregunta que abre la sesión:</b> En los dos problemas algo se multiplica una y otra vez. ¿Cómo describimos ese crecimiento y predecimos cualquier término sin calcularlos todos?</p></div>
+</section>
+
+<!-- ESTACIONES -->
+<section class="view" id="v-estaciones" data-view="estaciones" hidden>
+  <div class="view-head">
+    <p class="eyebrow">Desarrollo · Exploración · 25 min · Ficha 1</p>
+    <h2>Estaciones de patrones</h2>
+    <p class="lede">Construyan, cuenten y escriban la regla en palabras antes de usar n. Toquen una celda con «?» para revelar su valor.</p>
+  </div>
+  <div class="seg" role="group" aria-label="Estación">
+    <button aria-pressed="true" data-st="palitos">A · Palitos</button>
+    <button aria-pressed="false" data-st="sier">B · Sierpinski</button>
+    <button aria-pressed="false" data-st="ajedrez">Extra · Ajedrez</button>
+  </div>
+
+  <div class="grid2" data-station="palitos">
+    <div class="card">
+      <label class="slider">Figura n = <span class="v" id="palNV">3</span><input type="range" id="palN" min="1" max="10" value="3"></label>
+      <div class="fig-box"><svg id="palSvg" role="img" aria-label="Figura de cuadrados hechos con palitos"></svg></div>
+    </div>
+    <div class="card">
+      <div class="table-wrap"><table id="palTable"></table></div>
+      <div class="check-row"><span>¿Palitos de la figura 20?</span><input type="number" id="pal20" aria-label="Respuesta figura 20"><button class="btn" id="pal20Btn">Comprobar</button></div>
+      <p class="callout" id="pal20Msg" hidden></p>
+      <div class="row"><button class="btn ghost" id="palRuleBtn">Mostrar la regla</button><span class="formula" id="palRule" hidden>palitos = 3n + 1</span></div>
+      <p class="muted small">Para pensar: ¿existe una figura con exactamente 100 palitos?</p>
+    </div>
+  </div>
+
+  <div class="grid2" data-station="sier" hidden>
+    <div class="card">
+      <label class="slider">Nivel n = <span class="v" id="sierNV">3</span><input type="range" id="sierN" min="1" max="7" value="3"></label>
+      <div class="fig-box"><canvas id="sierCv" width="560" height="490" aria-label="Triángulo de Sierpinski"></canvas></div>
+      <p class="muted small">Cada triángulo sombreado se divide en 4 y se quita el del centro.</p>
+    </div>
+    <div class="card">
+      <div class="table-wrap"><table id="sierTable"></table></div>
+      <p class="muted small">Área sombreada respecto al triángulo inicial</p>
+      <div class="bar"><b id="sierPct">56 %</b><div class="track"><div class="fill b" id="sierBar"></div></div></div>
+      <div class="row"><button class="btn ghost" id="sierRuleBtn">Mostrar la regla</button><span class="formula" id="sierRule" hidden>triángulos = 3<sup>n − 1</sup></span></div>
+      <p class="muted small">Comparen con la estación A: ¿en qué se parecen y en qué se diferencian los dos crecimientos?</p>
+    </div>
+  </div>
+
+  <div class="grid2" data-station="ajedrez" hidden>
+    <div class="card" style="align-items:center">
+      <div class="board" id="board" role="group" aria-label="Tablero de ajedrez: toca una casilla"></div>
+    </div>
+    <div class="card">
+      <h3>El ajedrez y el arroz</h3>
+      <p>1 grano en la casilla 1, 2 en la casilla 2, 4 en la 3… y se duplica en cada casilla. Toca una casilla.</p>
+      <p class="muted small" id="casLbl">Casilla 10</p>
+      <p class="big-num" id="casGranos">512 granos</p>
+      <p class="formula" id="casPot">2<sup>9</sup></p>
+      <p class="callout" id="casKg"></p>
+    </div>
+  </div>
+</section>
+
+<!-- AHORRO -->
+<section class="view" id="v-ahorro" data-view="ahorro" hidden>
+  <div class="view-head">
+    <p class="eyebrow">Desarrollo · Situación · 20 min · Ficha 2</p>
+    <h2>Dos planes de ahorro</h2>
+    <p class="lede">Lucía suma una cantidad fija cada mes. Diego multiplica su saldo cada mes. Los dos empiezan con el mismo monto.</p>
+  </div>
+  <div class="card">
+    <div class="controls">
+      <label class="slider">Saldo inicial: S/ <span class="v" id="a0V">100</span><input type="range" id="a0" min="50" max="500" step="50" value="100"></label>
+      <label class="slider">Lucía suma cada mes: S/ <span class="v" id="dV">50</span><input type="range" id="dSl" min="10" max="200" step="10" value="50"></label>
+      <label class="slider">Diego multiplica por: <span class="v" id="rV">1,5</span><input type="range" id="rSl" min="1.05" max="2" step="0.05" value="1.5"></label>
+      <label class="slider">Meses: <span class="v" id="mV">10</span><input type="range" id="mSl" min="6" max="24" value="10"></label>
+    </div>
+    <div class="row">
+      <div class="legend"><span><i style="background:var(--suma)"></i>Plan A · Lucía (suma)</span><span><i style="background:var(--mult)"></i>Plan B · Diego (multiplica)</span></div>
+      <span style="margin-left:auto"></span>
+      <button class="btn" id="stepBtn">Mes a mes ▸</button>
+      <button class="btn ghost" id="allBtn">Mostrar todo</button>
+      <button class="btn ghost" id="tblBtn">Mostrar tabla</button>
+      <button class="btn ghost" id="resetPlans">Valores de la ficha</button>
+    </div>
+    <div class="chart-wrap"><svg id="chart" viewBox="0 0 800 400" role="img" aria-label="Saldo de los dos planes de ahorro por mes"></svg></div>
+    <p class="callout" id="crossMsg"></p>
+    <div class="table-wrap" id="plansTblWrap" hidden><table id="plansTbl"></table></div>
+  </div>
+  <div class="card quote">
+    <p><b>Pregunta crítica:</b> ¿existe un banco que multiplique tu ahorro por <span id="rTxt">1,5</span> cada mes?</p>
+    <p id="rateTxt" class="muted"></p>
+  </div>
+</section>
+
+<!-- FORMALIZAR -->
+<section class="view" id="v-formalizar" data-view="formalizar" hidden>
+  <div class="view-head">
+    <p class="eyebrow">Desarrollo · Formalización · 15 min</p>
+    <h2>¿Crece sumando o multiplicando?</h2>
+    <p class="lede">Escriban una sucesión separada por punto y coma. El detector compara la diferencia y la razón entre términos consecutivos.</p>
+  </div>
+  <div class="card">
+    <div class="row">
+      <input type="text" id="seqIn" value="3; 9; 27; 81" aria-label="Sucesión" style="flex:1 1 260px;font-family:var(--mono);font-size:1.2rem">
+      <button class="btn primary" id="seqBtn">Analizar</button>
+    </div>
+    <div class="row small"><span class="muted">Ejemplos de hoy:</span>
+      <button class="btn ghost" data-seq="4; 7; 10; 13">Palitos</button>
+      <button class="btn ghost" data-seq="1; 3; 9; 27">Sierpinski</button>
+      <button class="btn ghost" data-seq="100; 150; 225; 337,5">Plan B</button>
+      <button class="btn ghost" data-seq="2; -6; 18; -54">Ticket</button>
+      <button class="btn ghost" data-seq="1; 4; 9; 16">Cuadrados</button>
+    </div>
+    <div class="chain" id="chain"></div>
+    <div id="seqOut" class="row" style="align-items:stretch"></div>
+    <div class="check-row" id="ntermRow" hidden><span>Término n =</span><input type="number" id="nIn" value="10" min="1"><span class="formula" id="nOut"></span></div>
+  </div>
+  <div class="card">
+    <h3>Cuadro comparativo</h3>
+    <div class="table-wrap"><table class="compare">
+      <tr><th></th><th>Progresión aritmética</th><th>Progresión geométrica</th></tr>
+      <tr><th>Cómo se pasa al siguiente término</th><td class="cover">Se suma una cantidad fija d (diferencia)</td><td class="cover">Se multiplica por una cantidad fija r (razón)</td></tr>
+      <tr><th>Cómo se reconoce</th><td class="cover">a<sub>n+1</sub> − a<sub>n</sub> es constante</td><td class="cover">a<sub>n+1</sub> ÷ a<sub>n</sub> es constante</td></tr>
+      <tr><th>Ejemplos de hoy</th><td class="cover">Palitos (d = 3), plan A (d = 50)</td><td class="cover">Sierpinski (r = 3), plan B (r = 1,5), dobleces (r = 2)</td></tr>
+      <tr><th>Forma del gráfico</th><td class="cover">Puntos sobre una recta</td><td class="cover">Puntos sobre una curva que se dispara</td></tr>
+      <tr><th>Término general</th><td class="cover"><b class="mono">a<sub>n</sub> = a<sub>1</sub> + (n − 1)·d</b></td><td class="cover"><b class="mono">a<sub>n</sub> = a<sub>1</sub> · r<sup>n − 1</sup></b></td></tr>
+    </table></div>
+    <p class="muted small">¿Por qué el exponente es n − 1 y no n? En el primer término todavía no se ha multiplicado ninguna vez.</p>
+  </div>
+  <div class="card">
+    <h3>Suma de una progresión geométrica</h3>
+    <p class="formula">S<sub>n</sub> = a<sub>1</sub>(r<sup>n</sup> − 1) ÷ (r − 1)</p>
+    <div class="row">
+      <label>a<sub>1</sub> <input type="text" id="sa1" value="0,01" size="6"></label>
+      <label>r <input type="text" id="sr" value="2" size="4"></label>
+      <label>n <input type="number" id="sn" value="30" min="1" max="200" style="width:5rem"></label>
+      <button class="btn ghost" id="sDil">Usar el dilema del millonario</button>
+    </div>
+    <p class="big-num" id="sOut"></p>
+    <p class="muted" id="sCmp"></p>
+  </div>
+</section>
+
+<!-- RETOS -->
+<section class="view" id="v-retos" data-view="retos" hidden>
+  <div class="view-head">
+    <p class="eyebrow">Desarrollo · Retos · 30 min · Ficha 3</p>
+    <h2>Retos tipo concurso</h2>
+    <p class="lede">Elijan el equipo que responde y luego la alternativa. Sin procedimiento escrito no hay punto.</p>
+  </div>
+  <div class="retos-layout">
+    <div class="card">
+      <div class="row"><div class="reto-nav" id="retoNav"></div><span class="pts" id="retoPts" style="margin-left:auto"></span></div>
+      <p class="reto-q" id="retoQ"></p>
+      <div class="team-pick" id="teamPick" role="group" aria-label="Equipo que responde"></div>
+      <div class="options" id="retoOpts"></div>
+      <div id="retoFb"></div>
+      <div class="row"><button class="btn ghost" id="retoReveal">Revelar solución</button><button class="btn ghost" id="retoClear">Limpiar marcas</button></div>
+    </div>
+    <div class="card">
+      <h3>Tablero</h3>
+      <div class="table-wrap"><table class="matrix" id="matrix"></table></div>
+      <p class="muted small">Puntaje máximo: 18 puntos por equipo.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CIERRE -->
+<section class="view" id="v-cierre" data-view="cierre" hidden>
+  <div class="view-head">
+    <p class="eyebrow">Cierre · 25 min</p>
+    <h2>¿Qué aprendimos hoy?</h2>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Socialización</h3>
+      <p class="qitem">¿Cómo saben, solo mirando una lista de números, si crece sumando o multiplicando?</p>
+      <h3>Metacognición</h3>
+      <div class="row"><button class="btn" id="pickTeam">Elegir un equipo al azar</button><output id="pickedTeam" class="mono" style="font-weight:700;font-size:1.2rem"></output></div>
+      <div class="qlist">
+        <p class="qitem hidden-q">¿Qué diferencia hay entre crecer sumando y crecer multiplicando? Da un ejemplo que no hayamos visto hoy.</p>
+        <p class="qitem hidden-q">¿En qué momento de la sesión te equivocaste en una predicción? ¿Qué te hizo cambiar de idea?</p>
+        <p class="qitem hidden-q">¿Por qué nuestra intuición falla tanto con el crecimiento geométrico? ¿Dónde puede costarnos caro: deudas, rumores en redes, contagios?</p>
+      </div>
+      <p class="callout"><b>Ticket de salida:</b> individual, en silencio, 7 minutos. Se entrega en la puerta.</p>
+    </div>
+    <div class="card">
+      <h3>Puntaje acumulado</h3>
+      <ol class="ranking" id="ranking"></ol>
+      <p class="muted small">El puntaje se acumula hasta la feria de la sesión 5.</p>
+      <h3 style="margin-top:8px">Para la próxima sesión: Equilibrando el mundo</h3>
+      <svg id="balanzas" viewBox="0 0 520 210" role="img" aria-label="Dos balanzas: dos círculos y un triángulo pesan 11 kg; un círculo y dos triángulos pesan 10 kg"></svg>
+      <p>Dos círculos y un triángulo pesan 11 kg. Un círculo y dos triángulos pesan 10 kg. ¿Cuánto pesa cada figura? Tráiganlo pensado.</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<dialog id="teamDlg" aria-labelledby="teamDlgT">
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <h3 id="teamDlgT">Equipos y puntajes</h3>
+    <div id="teamEdit" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div class="row"><button class="btn ghost" id="teamResetPts">Poner todos los puntajes en 0</button><span style="margin-left:auto"></span><button class="btn primary" id="teamClose">Listo</button></div>
+    <p class="callout bad small" id="resetConfirm" hidden>Toca otra vez para confirmar. Se borran los puntajes y las marcas de los retos.</p>
+  </div>
+</dialog>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const fmt=(x,d=0)=>{const neg=x<0;let s=Math.abs(x).toFixed(d);let[i,f]=s.split('.');i=i.replace(/\B(?=(\d{3})+(?!\d))/g,' ');return(neg?'−':'')+i+(f?','+f:'')};
+const fmtBig=b=>b.toString().replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+const num=s=>parseFloat(String(s).trim().replace(/−/g,'-').replace(',','.'));
+const sup=s=>String(s).split('').map(c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'['0123456789'.indexOf(c)]||c).join('');
+const store={get(k,d){try{const v=localStorage.getItem('s1p-'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('s1p-'+k,JSON.stringify(v))}catch(e){}}};
+const COLORS=['var(--accent)','var(--suma)','var(--mult)','var(--stick)'];
+
+/* ---------- Equipos ---------- */
+let teams=store.get('teams',[{name:'Equipo 1',pts:0},{name:'Equipo 2',pts:0},{name:'Equipo 3',pts:0},{name:'Equipo 4',pts:0}]);
+const saveTeams=()=>{store.set('teams',teams);renderTeams()};
+function renderTeams(){
+  $('#scoreStrip').innerHTML=teams.map((t,i)=>`<button class="score-chip" data-i="${i}" title="Editar equipos"><span class="dot" style="background:${COLORS[i]}"></span>${esc(t.name)}<b>${t.pts}</b></button>`).join('');
+  $$('.score-chip').forEach(b=>b.onclick=openTeams);
+  renderGuesses();renderPick();renderMatrix();renderRanking();
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function openTeams(){
+  $('#teamEdit').innerHTML=teams.map((t,i)=>`<div class="team-edit"><span class="dot" style="width:12px;height:12px;border-radius:50%;background:${COLORS[i]}"></span><input type="text" id="tn${i}" value="${esc(t.name)}" aria-label="Nombre del equipo ${i+1}"><button class="icon-btn" data-d="-1" data-i="${i}" aria-label="Restar punto">−</button><b class="mono" style="min-width:2ch;text-align:center">${t.pts}</b><button class="icon-btn" data-d="1" data-i="${i}" aria-label="Sumar punto">+</button></div>`).join('');
+  $$('#teamEdit input').forEach((inp,i)=>inp.oninput=()=>{teams[i].name=inp.value||('Equipo '+(i+1));store.set('teams',teams);renderTeamsLite()});
+  $$('#teamEdit .icon-btn').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;teams[i].pts=Math.max(0,teams[i].pts+ +b.dataset.d);saveTeams();openTeams()});
+  $('#resetConfirm').hidden=true;
+  try{$('#teamDlg').showModal()}catch(e){$('#teamDlg').setAttribute('open','')}
+}
+function renderTeamsLite(){$$('.score-chip').forEach((b,i)=>{b.childNodes[1].textContent=teams[i].name});renderGuesses();renderPick();renderMatrix();renderRanking()}
+$('#teamClose').onclick=()=>{try{$('#teamDlg').close()}catch(e){$('#teamDlg').removeAttribute('open')};renderTeams()};
+$('#teamResetPts').onclick=()=>{const c=$('#resetConfirm');if(c.hidden){c.hidden=false;return}teams.forEach(t=>t.pts=0);solved={};store.set('solved',solved);c.hidden=true;saveTeams();openTeams();renderReto()};
+function addPts(i,p){teams[i].pts+=p;saveTeams()}
+
+/* ---------- Navegación y cronómetro ---------- */
+const VIEWS=[{id:'inicio',l:'Inicio',m:20},{id:'estaciones',l:'Estaciones',m:25},{id:'ahorro',l:'Planes de ahorro',m:20},{id:'formalizar',l:'Formalización',m:15},{id:'retos',l:'Retos',m:30},{id:'cierre',l:'Cierre',m:25}];
+$('#tabs').innerHTML=VIEWS.map(v=>`<a href="#${v.id}">${v.l}<span>${v.m}′</span></a>`).join('');
+let cur='inicio';
+function show(id){
+  if(!VIEWS.some(v=>v.id===id))id='inicio';
+  cur=id;
+  $$('.view').forEach(s=>s.hidden=s.dataset.view!==id);
+  $$('#tabs a').forEach(a=>a.getAttribute('href')==='#'+id?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
+  if(!running)setTimer(VIEWS.find(v=>v.id===id).m*60);
+  if(id==='ahorro')drawChart();
+  if(id==='cierre')renderRanking();
+  window.scrollTo({top:0});
+}
+window.addEventListener('hashchange',()=>show(location.hash.slice(1)));
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,textarea,select'))return;
+  const i=VIEWS.findIndex(v=>v.id===cur);
+  if(e.key==='ArrowRight'&&i<VIEWS.length-1)location.hash=VIEWS[i+1].id;
+  if(e.key==='ArrowLeft'&&i>0)location.hash=VIEWS[i-1].id;
+});
+let left=1200,running=false,tick=null;
+function setTimer(s){left=s;paintClock()}
+function paintClock(){const m=Math.floor(left/60),s=left%60;$('#clock').textContent=`${m}:${String(s).padStart(2,'0')}`;$('#timer').classList.toggle('done',left===0)}
+$('#tPlay').onclick=()=>{
+  if(running){clearInterval(tick);running=false;$('#tPlay').textContent='▶';return}
+  if(left===0)return;
+  running=true;$('#tPlay').textContent='⏸';
+  tick=setInterval(()=>{left=Math.max(0,left-1);paintClock();if(left===0){clearInterval(tick);running=false;$('#tPlay').textContent='▶'}},1000);
+};
+$('#tReset').onclick=()=>{clearInterval(tick);running=false;$('#tPlay').textContent='▶';setTimer(VIEWS.find(v=>v.id===cur).m*60)};
+$('#fsBtn').onclick=()=>{try{const p=document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();p&&p.catch&&p.catch(()=>{})}catch(e){}};
+$('#themeBtn').onclick=()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark';store.set('theme',r.dataset.theme)};
+{const th=store.get('theme',null);if(th)document.documentElement.dataset.theme=th}
+
+/* ---------- Inicio: dilema ---------- */
+let votes=store.get('votes',{a:0,b:0});
+function paintVotes(){$('#votesA').textContent=votes.a;$('#votesB').textContent=votes.b;store.set('votes',votes)}
+$('#voteA').onclick=()=>{votes.a++;paintVotes()};$('#voteB').onclick=()=>{votes.b++;paintVotes()};
+$('#voteReset').onclick=()=>{votes={a:0,b:0};paintVotes()};paintVotes();
+function paintDia(){
+  const d=+$('#dia').value;$('#diaV').textContent=d;
+  const bDay=0.01*2**(d-1),aTot=1000*d,bTot=0.01*(2**d-1),mx=Math.max(aTot,bTot);
+  $('#diaB').textContent='S/ '+fmt(bDay,2);
+  $('#barA').style.width=(aTot/mx*100)+'%';$('#barB').style.width=(bTot/mx*100)+'%';
+  $('#lblA').textContent='S/ '+fmt(aTot);$('#lblB').textContent='S/ '+fmt(bTot,2);
+  const m=$('#diaMsg');
+  if(bTot<aTot){m.className='callout';m.textContent=`Hasta el día ${d}, la opción A va ganando por S/ ${fmt(aTot-bTot,2)}.`}
+  else{m.className='callout ok';m.textContent=`Hasta el día ${d}, la opción B ya entregó ${fmt(bTot/aTot,1)} veces lo que entregó la A.`}
+}
+$('#dia').oninput=paintDia;$$('[data-dia]').forEach(b=>b.onclick=()=>{$('#dia').value=b.dataset.dia;paintDia()});paintDia();
+
+/* ---------- Inicio: Luna ---------- */
+const MARKS=[['Grosor de un celular',0.008],['Altura de una persona',1.7],['Edificio de 10 pisos',30],['Volcán Misti (sobre el nivel del mar)',5822],['Monte Everest',8849],['Avión comercial en vuelo',11000],['Estación Espacial Internacional',400000],['Diámetro de la Tierra',12742000],['La Luna',384400000]];
+const thick=n=>0.0001*2**n; // metros
+function lenTxt(m){if(m<0.01)return fmt(m*1000,m*1000<10?1:0)+' mm';if(m<1)return fmt(m*100,1)+' cm';if(m<1000)return fmt(m,m<10?2:0)+' m';return fmt(m/1000,m<1e4?1:0)+' km'}
+function paintDob(){
+  const n=+$('#dob').value;$('#dobV').textContent=n;const t=thick(n);$('#grosor').textContent=lenTxt(t);
+  let nextSet=false;
+  $('#ladder').innerHTML=MARKS.map(([name,h])=>{let c='';if(t>=h)c='passed';else if(!nextSet){c='next';nextSet=true}
+    const need=Math.ceil(Math.log2(h/0.0001));
+    return `<li class="${c}"><span>${t>=h?'✓':''}</span><span>${name}</span><span class="m">${lenTxt(h)}${t>=h?' · '+need+' dobleces':''}</span></li>`}).join('');
+}
+$('#dob').oninput=paintDob;paintDob();
+let guesses=store.get('guesses',['','','','']);
+function renderGuesses(){
+  const g=$('#guesses');if(!g)return;
+  g.innerHTML=teams.map((t,i)=>`<label class="guess" id="g${i}"><span class="small" style="font-weight:700;color:${COLORS[i]}">${esc(t.name)}</span><input type="number" min="0" id="gi${i}" value="${esc(guesses[i]??'')}" placeholder="Dobleces"></label>`).join('');
+  $$('#guesses input').forEach((inp,i)=>inp.oninput=()=>{guesses[i]=inp.value;store.set('guesses',guesses)});
+}
+let closest=[];
+$('#moonReveal').onclick=()=>{
+  let n=+$('#dob').value;const anim=setInterval(()=>{n=Math.min(42,n+1);$('#dob').value=n;paintDob();if(n>=42){clearInterval(anim);finishMoon()}},matchMedia('(prefers-reduced-motion: reduce)').matches?0:90);
+};
+function finishMoon(){
+  const vals=guesses.map(g=>g===''?null:Math.abs(+g-42));const valid=vals.filter(v=>v!==null);
+  const best=valid.length?Math.min(...valid):null;closest=vals.map((v,i)=>v!==null&&v===best?i:-1).filter(i=>i>=0);
+  $$('.guess').forEach((el,i)=>el.classList.toggle('win',closest.includes(i)));
+  const m=$('#moonMsg');m.hidden=false;m.className='callout ok';
+  m.innerHTML=`Con <b>42 dobleces</b> la hoja mide unos ${lenTxt(thick(42))}: supera la distancia a la Luna. Con 41 dobleces llegaría solo a ${lenTxt(thick(41))}.`+(closest.length?` Más cerca: <b>${closest.map(i=>esc(teams[i].name)).join(', ')}</b>.`:'');
+  $('#moonPoint').hidden=!closest.length;
+}
+$('#moonPoint').onclick=()=>{closest.forEach(i=>addPts(i,1));$('#moonPoint').hidden=true};
+
+/* ---------- Estaciones ---------- */
+$$('[data-st]').forEach(b=>b.onclick=()=>{$$('[data-st]').forEach(x=>x.setAttribute('aria-pressed',x===b));$$('[data-station]').forEach(s=>s.hidden=s.dataset.station!==b.dataset.st)});
+const revealed={pal:new Set(),sier:new Set()};
+function revealCell(td,key,i){td.onclick=()=>{revealed[key].add(i);key==='pal'?paintPal():paintSier()}}
+function paintPal(){
+  const n=+$('#palN').value;$('#palNV').textContent=n;
+  const L=46,pad=14,w=n*L+pad*2,h=L+pad*2;let s='';
+  for(let i=0;i<=n;i++)s+=`<line x1="${pad+i*L}" y1="${pad}" x2="${pad+i*L}" y2="${pad+L}"/>`;
+  for(let i=0;i<n;i++)s+=`<line x1="${pad+i*L}" y1="${pad}" x2="${pad+(i+1)*L}" y2="${pad}"/><line x1="${pad+i*L}" y1="${pad+L}" x2="${pad+(i+1)*L}" y2="${pad+L}"/>`;
+  const svg=$('#palSvg');svg.setAttribute('viewBox',`0 0 ${Math.max(w,200)} ${h}`);svg.setAttribute('width',Math.min(560,Math.max(w,200)*1.6));
+  svg.innerHTML=`<g stroke="var(--stick)" stroke-width="7" stroke-linecap="round">${s}</g>`;
+  let rows='<tr><th>Figura (n)</th><th>Palitos</th><th>¿Cuánto aumentó?</th></tr>';
+  for(let i=1;i<=n;i++){const v=3*i+1,o=revealed.pal.has(i);rows+=`<tr><td>${i}</td><td class="${o?'':'reveal'}" data-i="${i}">${o?v:'?'}</td><td>${i===1?'—':(o&&revealed.pal.has(i-1)?'+3':'')}</td></tr>`}
+  $('#palTable').innerHTML=rows;$$('#palTable td.reveal').forEach(td=>revealCell(td,'pal',+td.dataset.i));
+}
+$('#palN').oninput=paintPal;paintPal();
+$('#pal20Btn').onclick=()=>{const v=num($('#pal20').value),m=$('#pal20Msg');m.hidden=false;
+  if(v===61){m.className='callout ok';m.textContent='¡Correcto! 4 + 19 × 3 = 61 palitos. No hizo falta dibujarla.'}
+  else{m.className='callout bad';m.textContent=isNaN(v)?'Escriban un número.':'Todavía no. ¿Cuántos palitos se agregan en cada figura nueva y cuántas figuras nuevas hay desde la 1 hasta la 20?'}};
+$('#palRuleBtn').onclick=()=>{$('#palRule').hidden=false};
+function paintSier(){
+  const n=+$('#sierN').value;$('#sierNV').textContent=n;
+  const cv=$('#sierCv'),c=cv.getContext('2d'),cs=getComputedStyle(document.documentElement);
+  const fill=cs.getPropertyValue('--mult').trim(),bg=cs.getPropertyValue('--paper').trim(),edge=cs.getPropertyValue('--ink-2').trim();
+  c.clearRect(0,0,cv.width,cv.height);const S=520,H=Math.sqrt(3)/2,x0=20,y0=470;
+  c.beginPath();c.moveTo(x0,y0);c.lineTo(x0+S,y0);c.lineTo(x0+S/2,y0-S*H);c.closePath();c.fillStyle=bg;c.fill();c.strokeStyle=edge;c.lineWidth=1.5;c.stroke();
+  c.fillStyle=fill;c.globalAlpha=.85;
+  (function tri(x,y,s,d){if(d===0){c.beginPath();c.moveTo(x,y);c.lineTo(x+s,y);c.lineTo(x+s/2,y-s*H);c.closePath();c.fill();return}
+    tri(x,y,s/2,d-1);tri(x+s/2,y,s/2,d-1);tri(x+s/4,y-s/2*H,s/2,d-1)})(x0,y0,S,n-1);
+  c.globalAlpha=1;
+  let rows='<tr><th>Nivel (n)</th><th>Triángulos sombreados</th><th>¿Por cuánto se multiplicó?</th></tr>';
+  for(let i=1;i<=n;i++){const v=3**(i-1),o=revealed.sier.has(i);rows+=`<tr><td>${i}</td><td class="${o?'':'reveal'}" data-i="${i}">${o?fmt(v):'?'}</td><td>${i===1?'—':(o&&revealed.sier.has(i-1)?'×3':'')}</td></tr>`}
+  $('#sierTable').innerHTML=rows;$$('#sierTable td.reveal').forEach(td=>revealCell(td,'sier',+td.dataset.i));
+  const a=(3/4)**(n-1);$('#sierPct').textContent=fmt(a*100,a<.1?1:0)+' %';$('#sierBar').style.width=(a*100)+'%';
+}
+$('#sierN').oninput=paintSier;paintSier();
+$('#sierRuleBtn').onclick=()=>{$('#sierRule').hidden=false};
+const board=$('#board');
+for(let k=1;k<=64;k++){const b=document.createElement('button');b.textContent=k;b.setAttribute('aria-label','Casilla '+k);
+  b.style.background=`color-mix(in srgb, var(--mult) ${Math.round(8+k/64*80)}%, var(--card))`;b.style.color=k>34?'var(--card)':'var(--ink)';
+  b.onclick=()=>pickCas(k);board.appendChild(b)}
+function pickCas(k){
+  $$('#board button').forEach((b,i)=>b.setAttribute('aria-pressed',i+1===k));
+  const g=2n**BigInt(k-1);$('#casLbl').textContent='Casilla '+k;$('#casGranos').textContent=fmtBig(g)+(k===1?' grano':' granos');
+  $('#casPot').innerHTML=`2<sup>${k-1}</sup>`;
+  const kg=Number(g)/50000;let t;
+  if(kg<1)t=`Pesa menos de 1 kg (1 kg tiene unos 50 000 granos).`;
+  else if(kg<1000)t=`Pesa unos ${fmt(kg,kg<10?1:0)} kg de arroz.`;
+  else t=`Pesa unas ${fmt(kg/1000,kg<1e6?1:0)} toneladas de arroz.`;
+  if(k===64)t+=' En todo el tablero habría 2⁶⁴ − 1 granos: más arroz del que la humanidad produce en cientos de años.';
+  $('#casKg').textContent=t;
+}
+pickCas(10);
+
+/* ---------- Ahorro ---------- */
+let visible=99;
+const P=()=>({a:+$('#a0').value,d:+$('#dSl').value,r:+$('#rSl').value,m:+$('#mSl').value});
+function niceMax(v){const p=10**Math.floor(Math.log10(v));const f=v/p;return(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+function drawChart(){
+  const {a,d,r,m}=P();$('#a0V').textContent=a;$('#dV').textContent=d;$('#rV').textContent=fmt(r,2).replace(/,?0+$/,'');$('#mV').textContent=m;$('#rTxt').textContent=$('#rV').textContent;
+  const A=[],B=[];for(let n=1;n<=m;n++){A.push(a+d*(n-1));B.push(a*r**(n-1))}
+  const vis=Math.min(visible,m);const ymax=niceMax(Math.max(...A,...B));
+  const W=800,H=400,l=78,rt=30,tp=24,bt=50,X=n=>l+(n-1)/(m-1)*(W-l-rt),Y=v=>H-bt-v/ymax*(H-bt-tp);
+  let s='';
+  for(let i=0;i<=5;i++){const v=ymax/5*i;s+=`<line x1="${l}" x2="${W-rt}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${l-10}" y="${Y(v)+5}" text-anchor="end" font-size="14" fill="var(--ink-2)" font-family="var(--mono)">${fmt(v)}</text>`}
+  for(let n=1;n<=m;n++)s+=`<text x="${X(n)}" y="${H-bt+24}" text-anchor="middle" font-size="14" fill="var(--ink-2)" font-family="var(--mono)">${n}</text>`;
+  s+=`<text x="${(l+W-rt)/2}" y="${H-6}" text-anchor="middle" font-size="14" fill="var(--ink-2)">Mes</text><text x="${l-10}" y="14" text-anchor="end" font-size="14" fill="var(--ink-2)">Saldo (S/)</text>`;
+  let cross=0;for(let n=1;n<=m;n++)if(B[n-1]>A[n-1]+1e-9){cross=n;break}
+  if(cross&&cross<=vis)s+=`<line x1="${X(cross)}" x2="${X(cross)}" y1="${tp}" y2="${H-bt}" stroke="var(--ink-2)" stroke-dasharray="5 5"/>`;
+  const path=(arr,col,w)=>{const pts=arr.slice(0,vis).map((v,i)=>`${X(i+1)},${Y(v)}`).join(' ');return `<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linejoin="round"/>`+arr.slice(0,vis).map((v,i)=>`<circle cx="${X(i+1)}" cy="${Y(v)}" r="5.5" fill="${col}"><title>Mes ${i+1}: S/ ${fmt(v,2)}</title></circle>`).join('')};
+  s+=path(A,'var(--suma)',3)+path(B,'var(--mult)',3.5);
+  const lv=vis-1,lab=(v,col,dy)=>`<text x="${X(vis)-10}" y="${Y(v)+dy}" text-anchor="end" font-size="15" font-weight="700" fill="${col}" font-family="var(--mono)">S/ ${fmt(v,2)}</text>`;
+  const ya=Y(A[lv]),yb=Y(B[lv]);const apart=Math.abs(ya-yb)>22;
+  s+=lab(A[lv],'var(--suma)',apart?(ya>yb?24:-12):24)+lab(B[lv],'var(--mult)',apart?(yb>ya?24:-12):-12);
+  $('#chart').innerHTML=s;
+  const msg=$('#crossMsg');
+  if(!cross){msg.className='callout';msg.textContent=`En estos ${m} meses el plan de Diego no supera al de Lucía. Prueben con más meses o con otra razón.`}
+  else if(cross>vis){msg.className='callout';msg.textContent='Sigan avanzando mes a mes. ¿En qué mes creen que Diego pasará a Lucía?'}
+  else{msg.className='callout ok';msg.textContent=`Diego supera a Lucía por primera vez en el mes ${cross}. En el mes ${vis}, Diego tiene ${fmt(B[lv]/A[lv],1)} veces el saldo de Lucía.`}
+  $('#plansTbl').innerHTML='<tr><th>Mes</th>'+A.map((_,i)=>`<th>${i+1}</th>`).join('')+'</tr><tr><th>Plan A (S/)</th>'+A.map(v=>`<td>${fmt(v,v%1?2:0)}</td>`).join('')+'</tr><tr><th>Plan B (S/)</th>'+B.map(v=>`<td>${fmt(v,Math.abs(v-Math.round(v))<1e-9?0:2)}</td>`).join('')+'</tr>';
+  const yr=(r**12-1)*100;
+  $('#rateTxt').textContent=`Multiplicar por ${$('#rV').textContent} cada mes es ganar ${fmt((r-1)*100,0)} % mensual: en un año el ahorro se multiplicaría por ${fmt(r**12,1)}, una ganancia de ${fmt(yr,0)} %. Un banco formal paga mucho menos. Una oferta así es señal de estafa.`;
+}
+['a0','dSl','rSl','mSl'].forEach(id=>$('#'+id).oninput=drawChart);
+$('#stepBtn').onclick=()=>{const m=P().m;visible=visible>=m?1:visible+1;drawChart()};
+$('#allBtn').onclick=()=>{visible=99;drawChart()};
+$('#tblBtn').onclick=()=>{const w=$('#plansTblWrap');w.hidden=!w.hidden;$('#tblBtn').textContent=w.hidden?'Mostrar tabla':'Ocultar tabla'};
+$('#resetPlans').onclick=()=>{$('#a0').value=100;$('#dSl').value=50;$('#rSl').value=1.5;$('#mSl').value=10;visible=99;drawChart()};
+drawChart();
+
+/* ---------- Formalización ---------- */
+let seqInfo=null;
+function analyze(){
+  const raw=$('#seqIn').value.split(/[;\s]+/).filter(Boolean).map(num);
+  const out=$('#seqOut'),chain=$('#chain');$('#ntermRow').hidden=true;seqInfo=null;
+  if(raw.length<3||raw.some(isNaN)){chain.innerHTML='';out.innerHTML='<p class="callout bad">Escriban al menos tres números separados por punto y coma, por ejemplo: 2; 6; 18.</p>';return}
+  const close=(x,y)=>Math.abs(x-y)<=1e-9*Math.max(1,Math.abs(x),Math.abs(y));
+  const dif=raw.slice(1).map((v,i)=>v-raw[i]);const rat=raw.slice(1).map((v,i)=>raw[i]===0?NaN:v/raw[i]);
+  const isA=dif.every(d=>close(d,dif[0]));const isG=!rat.some(isNaN)&&rat.every(q=>close(q,rat[0]));
+  const nf=v=>fmt(v,Math.abs(v-Math.round(v))<1e-9?0:(Math.abs(v*100-Math.round(v*100))<1e-6?2:3)).replace(/(,\d*?)0+$/,'$1').replace(/,$/,'');
+  let h='';raw.forEach((v,i)=>{h+=`<span class="term">${nf(v)}</span>`;if(i<raw.length-1){const d=dif[i],q=rat[i];
+    h+=`<span class="step"><span class="s ${isA?'':'off'}">${d>=0?'+':'−'}${nf(Math.abs(d))}</span><span class="m ${isG?'':'off'}">${isNaN(q)?'×?':'×'+nf(q)}</span></span>`}});
+  chain.innerHTML=h;
+  let cards='';
+  if(isA){const d=dif[0],a1=raw[0];seqInfo={t:'A',a1,d};
+    cards+=`<div class="card" style="flex:1 1 280px"><span class="tag suma">Progresión aritmética</span><p>La diferencia es constante: <b>d = ${nf(d)}</b></p><p class="formula">a<sub>n</sub> = ${nf(a1)} + (n − 1)·${d<0?'('+nf(d)+')':nf(d)}</p></div>`}
+  if(isG){const r=rat[0],a1=raw[0];seqInfo=seqInfo&&!isG?seqInfo:{t:'G',a1,r};
+    cards+=`<div class="card" style="flex:1 1 280px"><span class="tag mult">Progresión geométrica</span><p>La razón es constante: <b>r = ${nf(r)}</b></p><p class="formula">a<sub>n</sub> = ${nf(a1)} · ${r<0?'('+nf(r)+')':nf(r)}<sup>n − 1</sup></p></div>`}
+  if(isA&&isG)cards+=`<p class="callout" style="flex:1 1 100%">Es aritmética y geométrica a la vez: es una sucesión constante (d = 0 y r = 1).</p>`;
+  if(!isA&&!isG)cards=`<p class="callout bad" style="flex:1 1 100%">Ni la diferencia ni la razón son constantes: <b>no es aritmética ni geométrica</b>. ${raw.every((v,i)=>close(v,(i+1)**2))?'Son los cuadrados perfectos: aₙ = n².':'Busquen otra regla.'}</p>`;
+  out.innerHTML=cards;
+  if(seqInfo){$('#ntermRow').hidden=false;nTerm()}
+}
+function nTerm(){if(!seqInfo)return;const n=Math.max(1,Math.floor(+$('#nIn').value||1));const v=seqInfo.t==='A'?seqInfo.a1+(n-1)*seqInfo.d:seqInfo.a1*seqInfo.r**(n-1);
+  $('#nOut').textContent=`a${String(n).split('').map(c=>'₀₁₂₃₄₅₆₇₈₉'[+c]).join('')} = ${Math.abs(v)>=1e15?v.toExponential(4).replace('.',','):fmt(v,Math.abs(v-Math.round(v))<1e-9?0:2)}`}
+$('#seqBtn').onclick=analyze;$('#seqIn').onkeydown=e=>{if(e.key==='Enter')analyze()};$('#nIn').oninput=nTerm;
+$$('[data-seq]').forEach(b=>b.onclick=()=>{$('#seqIn').value=b.dataset.seq;analyze()});analyze();
+$$('.cover').forEach(td=>td.onclick=()=>td.classList.add('open'));
+function sumG(){const a=num($('#sa1').value),r=num($('#sr').value),n=Math.floor(+$('#sn').value);
+  if([a,r,n].some(isNaN)||n<1){$('#sOut').textContent='—';$('#sCmp').textContent='Revisen los datos.';return}
+  const S=r===1?a*n:a*(r**n-1)/(r-1);$('#sOut').textContent='Sₙ = '+fmt(S,2);
+  $('#sCmp').textContent=(Math.abs(a-0.01)<1e-12&&r===2&&n===30)?`La opción B entrega en total S/ ${fmt(S,2)}, frente a S/ 30 000 de la opción A.`:`Suma de los ${n} primeros términos.`}
+['sa1','sr','sn'].forEach(id=>$('#'+id).oninput=sumG);$('#sDil').onclick=()=>{$('#sa1').value='0,01';$('#sr').value='2';$('#sn').value=30;sumG()};sumG();
+
+/* ---------- Retos ---------- */
+const RETOS=[
+ {q:'Halla el octavo término de la sucesión 3; 6; 12; 24; …',p:1,o:['192','384','768','48','24'],c:1,
+  e:'a₈ = 3 · 2⁷ = 3 · 128 = 384.',h:['192 = 3 · 2⁶. Revisen cuántas veces se multiplica por 2 hasta llegar al octavo término.','','768 = 3 · 2⁸. Usaron el exponente n en lugar de n − 1.','48 es el quinto término.','24 es el cuarto término, el último que se ve.']},
+ {q:'¿Qué lugar ocupa el número 1536 en la sucesión 3; 6; 12; 24; …?',p:2,o:['8.º','9.º','10.º','11.º','512.º'],c:2,
+  e:'3 · 2ⁿ⁻¹ = 1536 → 2ⁿ⁻¹ = 512 = 2⁹ → n − 1 = 9 → n = 10.',h:['El octavo término es 384. Sigan.','El exponente es 9, pero el lugar es n, y n − 1 = 9.','','El término 11 es 3072. Se pasaron.','512 es 2⁹: es una potencia, no un lugar.']},
+ {q:'En una progresión geométrica, el tercer término es 12 y el sexto es 96. Halla el primer término y la razón.',p:2,o:['a₁ = 3; r = 2','a₁ = 6; r = 2','a₁ = 3; r = 4','a₁ = 1; r = 3','a₁ = 12; r = 8'],c:0,
+  e:'a₆ ÷ a₃ = r³ = 96 ÷ 12 = 8 → r = 2. Luego a₁ = 12 ÷ 2² = 3.',h:['','Con a₁ = 6 y r = 2, el tercer término sería 24. Verifiquen.','Con r = 4, a₆ ÷ a₃ sería 4³ = 64.','Con a₁ = 1 y r = 3, el tercer término sería 9.','8 es r³, no r.']},
+ {q:'Una pelota cae desde 81 m de altura y en cada rebote sube 2/3 de la altura anterior. ¿Qué distancia total recorrió cuando toca el suelo por quinta vez?',p:3,o:['211 m','260 m','341 m','357 m','405 m'],c:2,
+  e:'Baja 81 m; luego sube y baja 54, 36, 24 y 16 m. Total: 81 + 2(54 + 36 + 24 + 16) = 81 + 260 = 341 m.',h:['Sumaron solo las caídas. Cada rebote también sube.','Olvidaron la primera caída de 81 m.','','Cuenten de nuevo los tramos: antes del quinto toque hay 4 rebotes.','405 m es lo que recorrería con infinitos rebotes.']},
+ {q:'En el triángulo de Sierpinski, cada paso conserva 3/4 del área sombreada. ¿Después de cuántos pasos el área sombreada es menor que la mitad del triángulo inicial?',p:3,o:['1','2','3','4','5'],c:2,
+  e:'(3/4)¹ = 0,75; (3/4)² = 0,5625; (3/4)³ ≈ 0,42 < 0,5. Después de 3 pasos.',h:['(3/4)¹ = 0,75 todavía es mayor que la mitad.','(3/4)² = 0,5625 todavía es mayor que 0,5.','','En el paso 3 ya es menor que la mitad. Busquen el primero.','En el paso 3 ya es menor que la mitad. Busquen el primero.']},
+ {q:'Entre 2 y 162 se colocan tres números para que los cinco formen una progresión geométrica. ¿Cuáles pueden ser?',p:4,o:['Solo 6; 18; 54','Solo −6; 18; −54','6; 18; 54 o −6; 18; −54','42; 82; 122','No existen tales números'],c:2,
+  e:'2 · r⁴ = 162 → r⁴ = 81 → r = 3 o r = −3. Hay dos respuestas: 6; 18; 54 y −6; 18; −54.',h:['Falta una posibilidad: r⁴ = 81 tiene dos soluciones reales.','Falta una posibilidad: r⁴ = 81 tiene dos soluciones reales.','','Eso es una progresión aritmética: se suma 40.','Planteen 2 · r⁴ = 162.']},
+ {q:'¿Puede una sucesión ser aritmética y geométrica a la vez?',p:3,o:['No, nunca','Sí, cualquier sucesión constante no nula, como 5; 5; 5; …','Sí, solo la sucesión 0; 0; 0; …','Sí, cualquier progresión aritmética con d > 0','Solo cuando la razón es igual a la diferencia'],c:1,
+  e:'5; 5; 5; … tiene d = 0 y r = 1. Cualquier sucesión constante no nula sirve.',h:['Piensen en una sucesión que no cambia.','','0; 0; 0; … es aritmética, pero no se puede dividir entre 0: su razón no está definida.','En 2; 4; 6 los cocientes son 2 y 1,5: no son constantes.','No basta: busquen una sucesión con d = 0.']},
+];
+let ri=0,pickT=-1,solved=store.get('solved',{}),marks={};
+function renderPick(){const p=$('#teamPick');if(!p)return;p.innerHTML='<span class="muted small" style="align-self:center">Responde:</span>'+teams.map((t,i)=>`<button aria-pressed="${pickT===i}" data-t="${i}"><span class="dot" style="width:10px;height:10px;border-radius:50%;background:${COLORS[i]}"></span>${esc(t.name)}</button>`).join('');
+  $$('#teamPick button').forEach(b=>b.onclick=()=>{pickT=+b.dataset.t;marks={};renderPick();renderReto()})}
+function renderReto(){
+  const R=RETOS[ri];
+  $('#retoNav').innerHTML=RETOS.map((_,i)=>`<button aria-current="${i===ri}" data-r="${i}">${i+1}</button>`).join('');
+  $$('#retoNav button').forEach(b=>b.onclick=()=>{ri=+b.dataset.r;marks={};$('#retoFb').innerHTML='';renderReto()});
+  $('#retoPts').textContent=`Reto ${ri+1} de 7 · ${R.p} punto${R.p>1?'s':''}`;
+  $('#retoQ').textContent=R.q;
+  $('#retoOpts').innerHTML=R.o.map((o,i)=>`<button class="option ${marks[i]||''}" data-o="${i}"><b>${'ABCDE'[i]}</b><span>${o}</span></button>`).join('');
+  $$('#retoOpts .option').forEach(b=>b.onclick=()=>answer(+b.dataset.o));
+  renderMatrix();
+}
+function answer(o){
+  const R=RETOS[ri],fb=$('#retoFb');
+  if(pickT<0){fb.innerHTML='<p class="callout bad">Primero elijan qué equipo responde.</p>';return}
+  const key=ri+'-'+pickT,tn=esc(teams[pickT].name);
+  if(o===R.c){marks={[o]:'correct'};renderReto();
+    if(solved[key]){fb.innerHTML=`<p class="callout ok"><b>Correcto.</b> ${R.e}<br>${tn} ya tiene los puntos de este reto.</p>`;return}
+    fb.innerHTML=`<div class="callout ok" style="display:flex;flex-direction:column;gap:10px"><p><b>Alternativa correcta.</b> ${R.e}</p><p>¿${tn} escribió y justificó el procedimiento?</p><div class="row"><button class="btn primary" id="okPts">Sí, dar ${R.p} punto${R.p>1?'s':''}</button><button class="btn ghost" id="noPts">No, sin puntos</button></div></div>`;
+    $('#okPts').onclick=()=>{solved[key]=R.p;store.set('solved',solved);addPts(pickT,R.p);fb.innerHTML=`<p class="callout ok">${tn} suma ${R.p} punto${R.p>1?'s':''}.</p>`;renderMatrix()};
+    $('#noPts').onclick=()=>{fb.innerHTML=`<p class="callout">Sin procedimiento no hay punto. ${tn} puede volver a intentarlo con el procedimiento escrito.</p>`};
+  }else{marks[o]='wrong';renderReto();fb.innerHTML=`<p class="callout bad"><b>Todavía no.</b> ${R.h[o]}</p>`}
+}
+$('#retoReveal').onclick=()=>{const R=RETOS[ri];marks={[R.c]:'correct'};renderReto();$('#retoFb').innerHTML=`<p class="callout ok"><b>Solución: ${'ABCDE'[R.c]})</b> ${R.e}</p>`};
+$('#retoClear').onclick=()=>{marks={};$('#retoFb').innerHTML='';renderReto()};
+function renderMatrix(){const m=$('#matrix');if(!m)return;
+  m.innerHTML='<tr><th>Equipo</th>'+RETOS.map((_,i)=>`<th>${i+1}</th>`).join('')+'<th>Retos</th></tr>'+teams.map((t,ti)=>{let tot=0;return `<tr><th style="text-align:left">${esc(t.name)}</th>`+RETOS.map((_,i)=>{const v=solved[i+'-'+ti];if(v)tot+=v;return v?`<td class="ok">${v}</td>`:'<td></td>'}).join('')+`<td class="mono"><b>${tot}</b></td></tr>`}).join('')}
+
+/* ---------- Cierre ---------- */
+$$('.qitem.hidden-q').forEach(q=>q.onclick=()=>q.classList.remove('hidden-q'));
+$('#pickTeam').onclick=()=>{let k=0;const spin=setInterval(()=>{$('#pickedTeam').textContent=teams[k%teams.length].name;k++;if(k>12+Math.floor(Math.random()*teams.length)){clearInterval(spin)}},70)};
+function renderRanking(){const r=$('#ranking');if(!r)return;const s=teams.map((t,i)=>({...t,i})).sort((a,b)=>b.pts-a.pts);
+  r.innerHTML=s.map((t,k)=>`<li><span class="pos">${k+1}</span><span>${esc(t.name)}</span><b class="mono">${t.pts} pts</b></li>`).join('')}
+function balanza(x,items,kg){
+  let s=`<g transform="translate(${x},0)"><polygon points="110,190 90,200 130,200" fill="var(--ink-2)"/><line x1="110" y1="80" x2="110" y2="192" stroke="var(--ink-2)" stroke-width="5"/><line x1="20" y1="80" x2="200" y2="80" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>`;
+  s+=`<line x1="40" y1="80" x2="30" y2="130" stroke="var(--ink-2)"/><line x1="40" y1="80" x2="70" y2="130" stroke="var(--ink-2)"/><line x1="180" y1="80" x2="160" y2="130" stroke="var(--ink-2)"/><line x1="180" y1="80" x2="200" y2="130" stroke="var(--ink-2)"/>`;
+  s+=`<path d="M18 130 h64 a32 14 0 0 1 -64 0z" fill="var(--paper)" stroke="var(--ink-2)"/><path d="M148 130 h64 a32 14 0 0 1 -64 0z" fill="var(--paper)" stroke="var(--ink-2)"/>`;
+  let px=26;items.forEach(t=>{if(t==='c')s+=`<circle cx="${px+8}" cy="118" r="11" fill="var(--suma)"/>`;else s+=`<polygon points="${px},129 ${px+20},129 ${px+10},108" fill="var(--mult)"/>`;px+=22});
+  s+=`<rect x="160" y="100" width="40" height="30" rx="4" fill="var(--ink)"/><text x="180" y="121" text-anchor="middle" font-size="14" font-weight="700" fill="var(--card)" font-family="var(--mono)">${kg}</text></g>`;return s}
+$('#balanzas').innerHTML=balanza(20,['c','c','t'],'11 kg')+balanza(280,['c','t','t'],'10 kg');
+
+/* ---------- Arranque ---------- */
+renderTeams();renderReto();show(location.hash.slice(1)||'inicio');
+const mq=matchMedia('(prefers-color-scheme: dark)');(mq.addEventListener?mq.addEventListener('change',()=>{paintSier();drawChart()}):0);
+$('#themeBtn').addEventListener('click',()=>{paintSier();drawChart()});
+})();
+</script>
+
+</body>
+</html>
