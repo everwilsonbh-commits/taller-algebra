@@ -4,6 +4,7 @@ Sesiones interactivas para 3.º, 4.º y 5.º de secundaria. Cada pregunta se com
 
 - [Portada](index.html)
 - 3.º · Taller · Sesión 1 · [El lenguaje de los patrones](lenguaje-patrones.html)
+- 3.º · Taller · Sesión 4 · [El puente hacia la cuadrática](puente-cuadratica.html)
 - 4.º · Taller · Sesión 1 · [Del trinomio a la ecuación](trinomio-ecuacion.html)
 - 3.º · 24 de octubre · [Máquinas secretas de la feria](maquinas-secretas.html)
 - 4.º · 24 de octubre · [Carrera de cubos](cubos-que-hablan.html)
