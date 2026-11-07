@@ -209,6 +209,13 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
 .eqin span{font-family:var(--mono);font-size:1.15rem;font-weight:700}
 .flash{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:14px}
 .fcard input{font-family:var(--mono);font-size:1.2rem;text-align:center}
+
+.board-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+#board{width:100%;max-width:calc(68vh * 760 / 460);min-width:560px;height:auto;display:block;margin:0 auto;touch-action:none;user-select:none}
+#board g.pz{cursor:grab;transition:transform .35s ease}
+#board g.pz.dragging{cursor:grabbing;transition:none}
+#board g.pz.locked{cursor:not-allowed}
+#board .pulse{animation:blink 1s steps(2) infinite}
 </style>
 </head>
 <body>
@@ -260,25 +267,31 @@ dialog::backdrop{background:rgba(0,0,0,.35)}
   <div class="view-head">
     <p class="eyebrow">Desarrollo · Exploración · 25 min · Ficha 1</p>
     <h2>Áreas que hablan</h2>
-    <p class="lede">Cambien a y b. Cada pieza muestra su área; la suma de las piezas siempre coincide con el área total.</p>
+    <p class="lede">Arrastren las piezas con el dedo o el mouse. Toquen dos veces una pieza (o usen «Girar») para rotarla. Al acercarla a su lugar, encaja sola.</p>
   </div>
   <div class="seg" role="group" aria-label="Producto notable">
     <button aria-pressed="true" data-md="suma">A · (a + b)²</button>
     <button aria-pressed="false" data-md="resta">B · (a − b)²</button>
     <button aria-pressed="false" data-md="dif">C · a² − b²</button>
   </div>
-  <div class="grid2">
-    <div class="card">
-      <div class="controls">
-        <label class="slider">a = <span class="v" id="aV">6</span><input type="range" id="aS" min="1" max="10" step="0.5" value="6"></label>
-        <label class="slider">b = <span class="v" id="bV">2,5</span><input type="range" id="bS" min="0.5" max="9.5" step="0.5" value="2.5"></label>
-      </div>
+  <div class="card">
+    <div class="row">
+      <label class="slider" style="flex:1 1 180px">a = <span class="v" id="aV">6</span><input type="range" id="aS" min="3" max="7" step="0.5" value="6"></label>
+      <label class="slider" style="flex:1 1 180px">b = <span class="v" id="bV">2,5</span><input type="range" id="bS" min="1" max="3.5" step="0.5" value="2.5"></label>
+      <label class="row small" style="gap:6px"><input type="checkbox" id="aNum"> Mostrar áreas con números</label>
+    </div>
+    <p class="callout" id="aTask"></p>
+    <div class="board-wrap"><svg id="board" viewBox="0 0 760 460" role="img" aria-label="Tablero de piezas de área"></svg></div>
+    <div class="row">
+      <button class="btn" id="aRot">⟳ Girar pieza</button>
+      <button class="btn ghost" id="aSol">Mostrar solución</button>
+      <button class="btn ghost" id="aReset">Volver a empezar</button>
+      <span class="muted small" id="aSel" style="margin-left:auto"></span>
+    </div>
+    <div id="aDone" hidden>
       <p class="formula center" id="idTxt"></p>
       <div class="table-wrap"><table id="aTbl"></table></div>
-      <div class="row"><button class="btn" id="aAct"></button></div>
-      <p class="callout" id="aMsg"></p>
     </div>
-    <div class="card"><svg id="aSvg" class="tiles" viewBox="0 0 440 440" role="img" aria-label="Piezas de área"></svg></div>
   </div>
 </section>
 
@@ -475,45 +488,84 @@ function renderFlash(){$('#flash').innerHTML=FL.map((f,i)=>`<div class="card fca
 $('#qNew').onclick=()=>{FL=[0,1,2,3,0].map(genQ);renderFlash()};renderFlash();
 
 /* ---------- Áreas ---------- */
-let md='suma',aStep=0;
-function paintAreas(){
-  let a=+$('#aS').value,b=+$('#bS').value;
-  if(md!=='suma'&&b>=a){b=Math.max(0.5,a-0.5);$('#bS').value=b}
-  $('#aV').textContent=nf(a);$('#bV').textContent=nf(b);
-  const S=$('#aSvg'),o=30;let s='',tbl='',id='',act='',msg='';
-  const rect=(x,y,w,h,fill,lab,val,extra='')=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="var(--ink)" stroke-width="1.5" ${extra}/>`+(lab&&w>26&&h>22?`<text x="${x+w/2}" y="${y+h/2-(h>48?6:0)}" text-anchor="middle" font-size="${Math.min(20,Math.max(12,w/5))}" font-weight="700" fill="var(--ink)">${lab}</text>${h>48?`<text x="${x+w/2}" y="${y+h/2+14}" text-anchor="middle" font-size="12" fill="var(--ink-2)" font-family="var(--mono)">${val}</text>`:''}`:'');
-  const dim=(x1,y1,x2,y2,t,vert)=>vert?`<text x="${x1-8}" y="${(y1+y2)/2+5}" text-anchor="end" font-size="15" fill="var(--ink-2)">${t}</text>`:`<text x="${(x1+x2)/2}" y="${y1-8}" text-anchor="middle" font-size="15" fill="var(--ink-2)">${t}</text>`;
-  const A2='var(--suma-soft)',AB='color-mix(in srgb, var(--stick) 30%, var(--card))',B2='var(--mult-soft)';
-  if(md==='suma'){const k=370/(a+b),A=a*k,Bk=b*k,hl=aStep===1;
-    s+=rect(o,o,A,A,A2,'a²',nf(a*a),hl?'opacity="0.35"':'')+rect(o+A,o,Bk,A,AB,'ab',nf(a*b),hl?'stroke-width="4"':'')+rect(o,o+A,A,Bk,AB,'ab',nf(a*b),hl?'stroke-width="4"':'')+rect(o+A,o+A,Bk,Bk,B2,'b²',nf(b*b),hl?'opacity="0.35"':'');
-    s+=dim(o,o,o+A,o,'a')+dim(o+A,o,o+A+Bk,o,'b')+dim(o,o,o,o+A,'a',1)+dim(o,o+A,o,o+A+Bk,'b',1);
-    id=`(a + b)² = a² + 2ab + b²`;
-    tbl=`<tr><th>Área total</th><th>a²</th><th>2ab</th><th>b²</th><th>Suma</th></tr><tr><td>${nf((a+b)**2)}</td><td>${nf(a*a)}</td><td>${nf(2*a*b)}</td><td>${nf(b*b)}</td><td><b>${nf(a*a+2*a*b+b*b)}</b></td></tr>`;
-    act=aStep?'Ver todas las piezas':'Mostrar lo que falta en a² + b²';
-    msg=aStep?`a² + b² = ${nf(a*a+b*b)} se olvida de los dos rectángulos resaltados: faltan 2ab = ${nf(2*a*b)}.`:`Prueben con a = 40 y b = 1: (40 + 1)² = 1600 + 80 + 1 = 1681.`;
-  }else if(md==='resta'){const k=370/a,A=a*k,Bk=b*k,c=a-b,C=c*k;
-    s+=rect(o,o+Bk,C,C,A2,'(a − b)²',nf(c*c));
-    const strip1=`<rect x="${o+C}" y="${o}" width="${Bk}" height="${A}" fill="${AB}" stroke="var(--ink)" stroke-width="1.5" ${aStep>=1?'fill-opacity="0.25" stroke-dasharray="5 4"':''}/>`;
-    const strip2=`<rect x="${o}" y="${o}" width="${A}" height="${Bk}" fill="${AB}" stroke="var(--ink)" stroke-width="1.5" ${aStep>=2?'fill-opacity="0.25" stroke-dasharray="5 4"':''}/>`;
-    s+=strip1+strip2+`<rect x="${o+C}" y="${o}" width="${Bk}" height="${Bk}" fill="${aStep>=3?B2:aStep===2?'var(--bad-soft)':B2}" stroke="var(--ink)" stroke-width="${aStep===2?3:1.5}"/><text x="${o+C+Bk/2}" y="${o+Bk/2+5}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">b²</text>`;
-    s+=dim(o,o,o+A,o,'a')+dim(o,o,o,o+A,'a',1)+`<text x="${o+C+Bk/2}" y="${o+A+20}" text-anchor="middle" font-size="15" fill="var(--ink-2)">b</text><text x="${o+C/2}" y="${o+A+20}" text-anchor="middle" font-size="15" fill="var(--ink-2)">a − b</text>`;
-    id=`(a − b)² = a² − 2ab + b²`;
-    const st=[`Empezamos con a² = ${nf(a*a)}.`,`Quitamos la tira de la derecha (ab = ${nf(a*b)}): quedan ${nf(a*a-a*b)}.`,`Quitamos la tira de arriba (ab = ${nf(a*b)}): quedan ${nf(a*a-2*a*b)}. ¡El cuadradito b² se quitó dos veces!`,`Devolvemos b² = ${nf(b*b)}: quedan ${nf(a*a-2*a*b+b*b)} = (a − b)² = ${nf(c*c)} ✓`];
-    tbl=`<tr><th>a²</th><th>− 2ab</th><th>+ b²</th><th>(a − b)²</th></tr><tr><td>${nf(a*a)}</td><td>− ${nf(2*a*b)}</td><td>+ ${nf(b*b)}</td><td><b>${nf(c*c)}</b></td></tr>`;
-    act=aStep>=3?'Volver a empezar':'Siguiente paso ▸';msg=st[aStep];
-  }else{const k=330/(a+b),A=a*k,Bk=b*k,c=a-b,C=c*k;
-    if(!aStep){s+=rect(o,o+Bk,A,C,A2,'I',nf(a*c))+rect(o,o,C,Bk,A2,'II',nf(c*b))+`<rect x="${o+C}" y="${o}" width="${Bk}" height="${Bk}" fill="none" stroke="var(--ink-2)" stroke-dasharray="5 4"/><text x="${o+C+Bk/2}" y="${o+Bk/2+5}" text-anchor="middle" font-size="14" fill="var(--ink-2)">b²</text>`;
-      s+=dim(o,o,o+A,o,'a')+dim(o,o,o,o+A,'a',1)}
-    else{s+=rect(o,o+40,A,C,A2,'I',nf(a*c))+rect(o+A,o+40,Bk,C,A2,'II',nf(c*b));s+=dim(o,o+40,o+A+Bk,o+40,'a + b')+`<text x="${o+A+Bk+8}" y="${o+40+C/2+5}" font-size="15" fill="var(--ink-2)">a − b</text>`}
-    id=`a² − b² = (a + b)(a − b)`;
-    tbl=`<tr><th>a² − b²</th><th>(a + b)(a − b)</th></tr><tr><td>${nf(a*a)} − ${nf(b*b)} = ${nf(a*a-b*b)}</td><td>${nf(a+b)} · ${nf(c)} = <b>${nf((a+b)*c)}</b></td></tr>`;
-    act=aStep?'Volver a la L':'Reacomodar la pieza II';msg=aStep?'La pieza II gira y se pone al costado: el rectángulo mide (a + b) por (a − b).':'Quitamos b² de una esquina de a². ¿Cómo reacomodarían la figura en L en un rectángulo?';
-  }
-  S.innerHTML=s;$('#idTxt').textContent=id;$('#aTbl').innerHTML=tbl;$('#aAct').textContent=act;$('#aMsg').textContent=msg;
-}
-$$('[data-md]').forEach(b=>b.onclick=()=>{md=b.dataset.md;aStep=0;$$('[data-md]').forEach(x=>x.setAttribute('aria-pressed',x===b));paintAreas()});
-$('#aAct').onclick=()=>{aStep=md==='resta'?(aStep>=3?0:aStep+1):(aStep?0:1);paintAreas()};
-$('#aS').oninput=paintAreas;$('#bS').oninput=paintAreas;paintAreas();
+const BK=32,BW=760/BK,BH=460/BK;let md='suma',PZ=[],sel=null,aSolved=false,phase=0,drag=null;
+const COL={a2:'var(--suma-soft)',ab:'color-mix(in srgb, var(--stick) 32%, var(--card))',b2:'var(--mult-soft)'};
+function AB(){let a=+$('#aS').value,b=+$('#bS').value;if(b>=a){b=a-0.5;$('#bS').value=b}$('#aV').textContent=nf(a);$('#bV').textContent=nf(b);return[a,b]}
+function setupAreas(){const[a,b]=AB();aSolved=false;phase=0;sel=null;$('#aDone').hidden=true;const ox=0.8,oy=1.6;
+  if(md==='suma'){const bx=ox+a+b+1.4;
+    PZ=[{id:'a2',lab:'a²',w:a,h:a,x:bx,y:oy,c:COL.a2,v:a*a},{id:'ab1',lab:'ab',w:b,h:a,x:bx+a+0.6,y:oy,c:COL.ab,v:a*b},{id:'ab2',lab:'ab',w:a,h:b,x:bx,y:oy+a+0.6,c:COL.ab,v:a*b},{id:'b2',lab:'b²',w:b,h:b,x:bx+a+0.6,y:oy+a+0.6,c:COL.b2,v:b*b}];
+    PZ.target={x:ox,y:oy,w:a+b,h:a+b,lab:'Armen aquí un cuadrado de lado a + b'};}
+  else if(md==='resta'){const bx=ox+a+1.6;
+    PZ=[{id:'sv',lab:'ab',w:b,h:a,x:bx,y:oy,c:COL.ab,v:a*b,glass:1},{id:'sh',lab:'ab',w:a,h:b,x:bx+b+0.6,y:oy,c:COL.ab,v:a*b,glass:1},{id:'b2',lab:'b²',w:b,h:b,x:bx+b+0.6,y:oy+b+0.8,c:COL.b2,v:b*b,lock:1}];
+    PZ.base={x:ox,y:oy,s:a};PZ.target={x:ox,y:oy+b,w:a-b,h:a-b,lab:'(a − b)²'};}
+  else{const tx=ox+a+1.8;
+    PZ=[{id:'I',lab:'I',w:a,h:a-b,x:ox,y:oy+b,c:COL.a2,v:a*(a-b)},{id:'II',lab:'II',w:a-b,h:b,x:ox,y:oy,c:COL.a2,v:(a-b)*b}];
+    PZ.ghost={x:ox+a-b,y:oy,s:b};PZ.target={x:tx,y:oy+b,w:a+b,h:a-b,lab:'Rectángulo de lados (a + b) y (a − b)'};}
+  task();renderBoard()}
+function task(){const t=$('#aTask'),[a,b]=AB();t.className='callout';
+  if(md==='suma')t.textContent=aSolved?'':'Armen un cuadrado de lado a + b con las cuatro piezas, dentro del contorno punteado.';
+  else if(md==='resta')t.textContent=phase===0?'El cuadrado verde es a². Cubran con las dos tiras ab la parte que NO es (a − b)²: una a la derecha y otra arriba.':phase===1?'¡Miren la esquina! Las dos tiras se enciman: el cuadradito b² se quitó dos veces. Arrastren b² a esa esquina para devolverlo una vez.':'';
+  else t.textContent=aSolved?'':'Quitamos b² de una esquina de a². Lleven las piezas I y II al rectángulo punteado; tendrán que girar una.';}
+function rectSvg(p,extra=''){const k=BK,num=$('#aNum').checked;const w=p.w*k,h=p.h*k;const fs=Math.max(13,Math.min(24,Math.min(w,h)/3.2));
+  return `<rect width="${w}" height="${h}" rx="3" fill="${p.c}" ${p.glass?'fill-opacity="0.72"':''} stroke="var(--ink)" stroke-width="${sel===p.id?3.5:1.5}" ${p.lock&&phase<1?'stroke-dasharray="5 4" opacity="0.45"':''}/>`+
+   `<text x="${w/2}" y="${h/2+(num&&h>50?-4:fs/3)}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="var(--ink)" pointer-events="none">${p.lab}</text>`+
+   (num&&h>50?`<text x="${w/2}" y="${h/2+18}" text-anchor="middle" font-size="13" fill="var(--ink-2)" font-family="var(--mono)" pointer-events="none">${nf(p.v)}</text>`:'')+extra}
+function renderBoard(){const k=BK,[a,b]=AB();let s='';
+  for(let x=0;x<=BW;x+=0.5)s+=`<line x1="${x*k}" x2="${x*k}" y1="0" y2="460" stroke="var(--line)" stroke-width="${x%1?0.3:0.6}"/>`;
+  for(let y=0;y<=BH;y+=0.5)s+=`<line y1="${y*k}" y2="${y*k}" x1="0" x2="760" stroke="var(--line)" stroke-width="${y%1?0.3:0.6}"/>`;
+  const T=PZ.target;
+  if(PZ.base){const B=PZ.base;s+=`<rect x="${B.x*k}" y="${B.y*k}" width="${B.s*k}" height="${B.s*k}" fill="var(--suma-soft)" stroke="var(--suma)" stroke-width="2.5"/><text x="${B.x*k+8}" y="${B.y*k+B.s*k-10}" font-size="15" font-weight="700" fill="var(--suma)">a²</text>`;
+    s+=`<rect x="${T.x*k}" y="${T.y*k}" width="${T.w*k}" height="${T.h*k}" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="7 5"/><text x="${(T.x+T.w/2)*k}" y="${(T.y+T.h/2)*k+6}" text-anchor="middle" font-size="18" font-weight="800" fill="var(--ink)">${T.lab}</text>`;
+    s+=`<text x="${B.x*k+B.s*k/2}" y="${B.y*k-8}" text-anchor="middle" font-size="14" fill="var(--ink-2)">a</text><text x="${B.x*k-8}" y="${B.y*k+B.s*k/2}" text-anchor="end" font-size="14" fill="var(--ink-2)">a</text>`}
+  else{s+=`<rect x="${T.x*k}" y="${T.y*k}" width="${T.w*k}" height="${T.h*k}" fill="${aSolved?'var(--ok-soft)':'none'}" stroke="${aSolved?'var(--ok)':'var(--accent)'}" stroke-width="2.5" stroke-dasharray="${aSolved?0:'8 6'}"/>`;
+    if(!aSolved)s+=`<text x="${(T.x+T.w/2)*k}" y="${T.y*k-8}" text-anchor="middle" font-size="13" fill="var(--accent)">${T.lab}</text>`;
+    s+=md==='suma'?`<text x="${(T.x+T.w/2)*k}" y="${(T.y+T.h)*k+18}" text-anchor="middle" font-size="14" fill="var(--ink-2)">a + b = ${nf(a+b)}</text>`:`<text x="${(T.x+T.w/2)*k}" y="${(T.y+T.h)*k+18}" text-anchor="middle" font-size="14" fill="var(--ink-2)">a + b = ${nf(a+b)}</text><text x="${(T.x+T.w)*k+6}" y="${(T.y+T.h/2)*k+5}" font-size="14" fill="var(--ink-2)">a − b</text>`}
+  if(PZ.ghost){const G=PZ.ghost;s+=`<rect x="${G.x*k}" y="${G.y*k}" width="${G.s*k}" height="${G.s*k}" fill="none" stroke="var(--ink-2)" stroke-dasharray="4 4"/><text x="${(G.x+G.s/2)*k}" y="${(G.y+G.s/2)*k+5}" text-anchor="middle" font-size="14" fill="var(--ink-2)">b²</text>`}
+  PZ.forEach(p=>{s+=`<g class="pz${p.lock&&phase<1?' locked':''}" data-id="${p.id}" style="transform:translate(${p.x*k}px,${p.y*k}px)">${rectSvg(p)}</g>`});
+  if(md==='resta'&&phase>=1){const c={x:(PZ.base.x+a-b)*k,y:PZ.base.y*k};s+=`<rect x="${c.x}" y="${c.y}" width="${b*k}" height="${b*k}" fill="none" stroke="var(--bad)" stroke-width="4" pointer-events="none" class="pulse"/>`}
+  $('#board').innerHTML=s;const p=PZ.find(q=>q.id===sel);$('#aSel').textContent=p?`Pieza seleccionada: ${p.lab} (${nf(p.w)} × ${nf(p.h)})`:'Toquen una pieza para seleccionarla.';}
+function svgPt(e){const sv=$('#board'),pt=sv.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const q=pt.matrixTransform(sv.getScreenCTM().inverse());return{x:q.x/BK,y:q.y/BK}}
+function snapPiece(p){const T=PZ.target,xs=[T.x,T.x+T.w],ys=[T.y,T.y+T.h];if(PZ.base){xs.push(PZ.base.x,PZ.base.x+PZ.base.s);ys.push(PZ.base.y,PZ.base.y+PZ.base.s)}
+  PZ.forEach(q=>{if(q!==p){xs.push(q.x,q.x+q.w);ys.push(q.y,q.y+q.h)}});const tol=0.45;
+  let best=null;for(const c of xs)for(const d of [c-p.x,c-(p.x+p.w)])if(Math.abs(d)<tol&&(!best||Math.abs(d)<Math.abs(best)))best=d;if(best!==null)p.x+=best;else p.x=Math.round(p.x*2)/2;
+  best=null;for(const c of ys)for(const d of [c-p.y,c-(p.y+p.h)])if(Math.abs(d)<tol&&(!best||Math.abs(d)<Math.abs(best)))best=d;if(best!==null)p.y+=best;else p.y=Math.round(p.y*2)/2;
+  p.x=Math.max(0,Math.min(BW-p.w,p.x));p.y=Math.max(0,Math.min(BH-p.h,p.y))}
+const near=(u,v)=>Math.abs(u-v)<1e-6;
+const inside=(p,T)=>p.x>=T.x-1e-6&&p.y>=T.y-1e-6&&p.x+p.w<=T.x+T.w+1e-6&&p.y+p.h<=T.y+T.h+1e-6;
+const overlap=(p,q)=>Math.min(p.x+p.w,q.x+q.w)-Math.max(p.x,q.x)>1e-6&&Math.min(p.y+p.h,q.y+q.h)-Math.max(p.y,q.y)>1e-6;
+function checkAreas(){const[a,b]=AB(),T=PZ.target;
+  if(md==='suma'||md==='dif'){const ok=PZ.every(p=>inside(p,T))&&PZ.every((p,i)=>PZ.every((q,j)=>i>=j||!overlap(p,q)));if(ok&&!aSolved){aSolved=true;done()}}
+  else{const B=PZ.base,sv=PZ.find(p=>p.id==='sv'),sh=PZ.find(p=>p.id==='sh'),b2=PZ.find(p=>p.id==='b2');
+    const okV=(o)=>near(o.x,B.x+a-b)&&near(o.y,B.y)&&near(o.w,b)&&near(o.h,a),okH=(o)=>near(o.x,B.x)&&near(o.y,B.y)&&near(o.w,a)&&near(o.h,b);
+    const placed=(okV(sv)&&okH(sh))||(okV(sh)&&okH(sv));
+    if(phase===0&&placed){phase=1;task()}
+    if(phase===1&&placed&&near(b2.x,B.x+a-b)&&near(b2.y,B.y)){phase=2;aSolved=true;done()}}
+  renderBoard()}
+function done(){const[a,b]=AB(),c=a-b;const t=$('#aTask');t.className='callout ok';$('#aDone').hidden=false;
+  if(md==='suma'){t.textContent=`¡Cuadrado armado! Su lado es a + b, y está hecho de a², dos rectángulos ab y b². Por eso (a + b)² no es a² + b²: faltarían los dos rectángulos.`;
+    $('#idTxt').textContent='(a + b)² = a² + 2ab + b²';$('#aTbl').innerHTML=`<tr><th>(a + b)²</th><th>a²</th><th>2ab</th><th>b²</th><th>Suma de piezas</th></tr><tr><td>${nf(a+b)}² = ${nf((a+b)**2)}</td><td>${nf(a*a)}</td><td>${nf(2*a*b)}</td><td>${nf(b*b)}</td><td><b>${nf(a*a+2*a*b+b*b)}</b></td></tr>`}
+  else if(md==='resta'){t.textContent=`¡Listo! A a² le quitamos dos tiras ab, pero el cuadradito b² se quitó dos veces; por eso se suma una vez.`;
+    $('#idTxt').textContent='(a − b)² = a² − 2ab + b²';$('#aTbl').innerHTML=`<tr><th>a²</th><th>− 2ab</th><th>+ b²</th><th>(a − b)²</th></tr><tr><td>${nf(a*a)}</td><td>− ${nf(2*a*b)}</td><td>+ ${nf(b*b)}</td><td><b>${nf(a*a-2*a*b+b*b)}</b> = ${nf(c)}²</td></tr>`}
+  else{t.textContent='¡Rectángulo armado! La figura en L (a² sin b²) tiene la misma área que un rectángulo de lados a + b y a − b.';
+    $('#idTxt').textContent='a² − b² = (a + b)(a − b)';$('#aTbl').innerHTML=`<tr><th>a² − b²</th><th>(a + b)(a − b)</th></tr><tr><td>${nf(a*a)} − ${nf(b*b)} = ${nf(a*a-b*b)}</td><td>${nf(a+b)} · ${nf(c)} = <b>${nf((a+b)*c)}</b></td></tr>`}}
+function rotSel(){lastTap=0;const p=PZ.find(q=>q.id===sel);if(!p||aSolved)return;const cx=p.x+p.w/2,cy=p.y+p.h/2;[p.w,p.h]=[p.h,p.w];p.x=cx-p.w/2;p.y=cy-p.h/2;snapPiece(p);checkAreas()}
+let lastTap=0;(function bindBoard(){const sv=$('#board');
+  sv.addEventListener('pointerdown',e=>{const g=e.target.closest('g.pz');if(!g||aSolved)return;const p=PZ.find(q=>q.id===g.dataset.id);if(p.lock&&phase<1)return;
+    const now=Date.now();if(sel===p.id&&now-lastTap<350){rotSel();return}lastTap=now;sel=p.id;
+    const q=svgPt(e);drag={p,dx:q.x-p.x,dy:q.y-p.y,g};PZ.splice(PZ.indexOf(p),1);PZ.push(p);renderBoard();drag.g=$(`#board g[data-id="${p.id}"]`);drag.g.classList.add('dragging');sv.setPointerCapture(e.pointerId);e.preventDefault()});
+  sv.addEventListener('pointermove',e=>{if(!drag)return;const q=svgPt(e);drag.p.x=q.x-drag.dx;drag.p.y=q.y-drag.dy;drag.g.style.transform=`translate(${drag.p.x*BK}px,${drag.p.y*BK}px)`});
+  const end=()=>{if(!drag)return;snapPiece(drag.p);drag=null;checkAreas()};sv.addEventListener('pointerup',end);sv.addEventListener('pointercancel',end)})();
+$('#aRot').onclick=rotSel;
+$('#aSol').onclick=()=>{const[a,b]=AB(),T=PZ.target;
+  if(md==='suma'){const pos={a2:[T.x,T.y,a,a],ab1:[T.x+a,T.y,b,a],ab2:[T.x,T.y+a,a,b],b2:[T.x+a,T.y+a,b,b]};PZ.forEach(p=>{[p.x,p.y,p.w,p.h]=pos[p.id]})}
+  else if(md==='resta'){const B=PZ.base;const pos={sv:[B.x+a-b,B.y,b,a],sh:[B.x,B.y,a,b],b2:[B.x+a-b,B.y,b,b]};phase=1;PZ.forEach(p=>{[p.x,p.y,p.w,p.h]=pos[p.id]})}
+  else{const pos={I:[T.x,T.y,a,a-b],II:[T.x+a,T.y,b,a-b]};PZ.forEach(p=>{[p.x,p.y,p.w,p.h]=pos[p.id]})}
+  sel=null;checkAreas()};
+$('#aReset').onclick=setupAreas;
+$$('[data-md]').forEach(b=>b.onclick=()=>{md=b.dataset.md;$$('[data-md]').forEach(x=>x.setAttribute('aria-pressed',x===b));setupAreas()});
+$('#aS').oninput=setupAreas;$('#bS').oninput=setupAreas;$('#aNum').onchange=renderBoard;
+function paintAreas(){renderBoard()}
+setupAreas();
 
 /* ---------- Ecuaciones ---------- */
 let eStep=1,vname='x',vkind='';
